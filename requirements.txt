@@ -4,6 +4,7 @@ shapely
 atomicwrites
 edtf
 arrow
+uk-postcode-utils
 git+https://github.com/whosonfirst/py-mapzen-whosonfirst-export
 git+https://github.com/whosonfirst/py-mapzen-whosonfirst-utils
 git+https://github.com/whosonfirst/py-mapzen-whosonfirst-geojson
