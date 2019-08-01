@@ -6,9 +6,13 @@ import os
 import pprint
 import re
 import geojson
-from datetime import date
+import json
+from datetime import datetime, date
 
 from ukpostcodeutils import validation
+
+import shapely.geometry
+from shapely.geometry import Point
 
 import mapzen.whosonfirst.utils
 import mapzen.whosonfirst.uri
@@ -56,6 +60,9 @@ def main():
     cease_removed_postcodes(wof_postcode_id_lookup,
                             ons_postcode_data_lookup, wof_path)
 
+    update_postcodes(wof_postcode_id_lookup,
+                     ons_postcode_data_lookup, wof_path)
+
 
 def deprecate_invalid_postcodes(invalid_wof_name_id_lookup, wof_path):
     invalid_postcode_ids = invalid_wof_name_id_lookup.values()
@@ -75,6 +82,44 @@ def cease_removed_postcodes(wof_postcode_id_lookup, ons_postcode_data_lookup, wo
     for postcode in removed_postcodes:
         id = wof_postcode_id_lookup[postcode]
         cease_id(id, wof_path)
+
+
+def update_postcodes(wof_postcode_id_lookup, ons_postcode_data_lookup, wof_path):
+    ons_postcodes_set = set(ons_postcode_data_lookup.keys())
+    wof_postcodes_set = set(wof_postcode_id_lookup.keys())
+
+    updated_postcodes = wof_postcodes_set.intersection(ons_postcodes_set)
+
+    for postcode in updated_postcodes:
+        ons_data = ons_postcode_data_lookup[postcode]
+        wof_id = wof_postcode_id_lookup[postcode]
+
+        feature = load_feature(wof_id, wof_path)
+
+        longitude = float(ons_data["longitude"])
+        latitude = float(ons_data["latitude"])
+
+        point = Point(longitude, latitude)
+        feature["geometry"] = point
+
+        props = feature["properties"]
+
+        props["edtf:inception"] = convert_ons_date_to_edtf(
+            ons_data["start"])
+        props["edtf:cessation"] = convert_ons_date_to_edtf(
+            ons_data["end"])
+
+        if props["edtf:cessation"] == "uuuu":
+            props["mz:is_current"] = 1
+        else:
+            props["mz:is_current"] = 0
+
+        feature["properties"] = props
+
+        # From: https://github.com/whosonfirst/whosonfirst-cookbook/blob/master/how_to/fixing_geometries.md
+        feature = json.loads(geojson.dumps(feature))
+
+        update_feature(feature, wof_path)
 
 
 def build_ons_lookup(path):
@@ -224,6 +269,17 @@ def load_feature(id, path):
 def update_feature(feature, path):
     exporter = mapzen.whosonfirst.export.flatfile(path)
     exporter.export_feature(feature)
+
+
+def convert_ons_date_to_edtf(string):
+    """Convert an ONS style month date (YYYYMM) to YYYY-MM-uu"""
+    if string is None or string == "":
+        return "uuuu"
+
+    year = string[:4]
+    month = string[4:]
+
+    return "%s-%s-uu" % (year, month)
 
 
 if __name__ == "__main__":
