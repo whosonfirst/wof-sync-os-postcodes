@@ -2,14 +2,16 @@ package wofdata
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/onsdb"
+	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/pipclient"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -122,28 +124,36 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time) error {
 	return d.exportFeature(f.Id(), json)
 }
 
-func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData) error {
+func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient) error {
 	bytes := f.Bytes()
 	json := string(bytes)
 
-	inception := convertStringToEDTF(pcData.Inception)
-	json, err := sjson.Set(json, "properties.edtf:inception", inception)
+	json, err := setDates(json, pcData)
 	if err != nil {
 		return err
 	}
 
-	cessation := convertSQLStringtoEDTF(pcData.Cessation)
-	json, err = sjson.Set(json, "properties.edtf:cessation", cessation)
-	if err != nil {
-		return err
+	// Don't set geometry for BT postcodes, because the licensing for these is more
+	// restrictive. 🙄
+	if !strings.HasPrefix(f.Name(), "BT") {
+		json, err = setPointGeometry(json, pcData.Latitude, pcData.Longitude)
+		if err != nil {
+			return err
+		}
+
+		// If we've updated the geometry, set the source to OS
+		json, err = sjson.Set(json, "properties.src:geom", "os")
+		if err != nil {
+			return err
+		}
+
+		json, err = setHierarchy(json, pip, pcData)
+		if err != nil {
+			return err
+		}
 	}
 
-	isCurrent := 1
-	if pcData.Cessation.Valid {
-		isCurrent = 0
-	}
-
-	json, err = sjson.Set(json, "properties.mz:is_current", isCurrent)
+	json, err = setOSProperties(json, pcData)
 	if err != nil {
 		return err
 	}
@@ -185,19 +195,167 @@ func (d *WOFData) exportFeature(id string, json string) error {
 	return export.Export(bytes, opts, f)
 }
 
-func convertSQLStringtoEDTF(s sql.NullString) string {
-	if !s.Valid {
-		return "uuuu"
+func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
+	inception := convertStringToEDTF(pc.Inception)
+	json, err := sjson.Set(json, "properties.edtf:inception", inception)
+	if err != nil {
+		return "", err
 	}
 
-	return convertStringToEDTF(s.String)
+	cessation := convertStringToEDTF(pc.Cessation)
+	json, err = sjson.Set(json, "properties.edtf:cessation", cessation)
+	if err != nil {
+		return "", err
+	}
+
+	isCurrent := 1
+	if cessation != "uuuu" {
+		isCurrent = 0
+	}
+
+	json, err = sjson.Set(json, "properties.mz:is_current", isCurrent)
+	if err != nil {
+		return "", err
+	}
+
+	return json, nil
+}
+
+func setPointGeometry(json string, latitude string, longitude string) (string, error) {
+	json, err := sjson.SetRaw(json, "geometry.coordinates.0", longitude)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.SetRaw(json, "geometry.coordinates.1", latitude)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.SetRaw(json, "bbox.0", longitude)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.SetRaw(json, "bbox.1", latitude)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.SetRaw(json, "bbox.2", longitude)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.SetRaw(json, "bbox.3", latitude)
+	if err != nil {
+		return "", err
+	}
+
+	return json, nil
+}
+
+func setOSProperties(json string, pc *onsdb.PostcodeData) (string, error) {
+	// Drop the NHS fields, they're not very useful and we don't have NHS geography
+	// anywhere else in WOF
+	json, err := sjson.Delete(json, "properties.os:nhs_ha_code")
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Delete(json, "properties.os:nhs_regional_ha_code")
+	if err != nil {
+		return "", err
+	}
+
+	// Delete this key because 'distict' is mispelt
+	json, err = sjson.Delete(json, "properties.os:admin_distict_code")
+	if err != nil {
+		return "", err
+	}
+
+	// Drop the ward code, because these are part of electoral geography, which
+	// isn't referenced anywhere else in WOF.
+	json, err = sjson.Delete(json, "properties.os:admin_ward_code")
+	if err != nil {
+		return "", err
+	}
+
+	// Drop os:admin_county_code, because we're going to rename it later on.
+	json, err = sjson.Delete(json, "properties.os:admin_county_code")
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Set(json, "properties.os:country_code", pc.CountryCode)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Set(json, "properties.os:region_code", pc.RegionCode)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Set(json, "properties.os:district_code", pc.DistrictCode)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Set(json, "properties.os:county_code", pc.CountyCode)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Set(json, "properties.os:positional_quality_indicator", pc.PositionalQuality)
+	if err != nil {
+		return "", err
+	}
+
+	return json, nil
 }
 
 func convertStringToEDTF(s string) string {
+	if s == "" {
+		return "uuuu"
+	}
+
 	t, err := time.Parse("200601", s)
 	if err != nil {
 		log.Fatalf("Failed to parse inception/cessation date %s: %s", s, err)
 	}
 
 	return t.Format(edtfDateLayout)
+}
+
+func setHierarchy(json string, pip *pipclient.PIPClient, pc *onsdb.PostcodeData) (string, error) {
+	hierarchy, err := buildHierarchy(pip, pc.Latitude, pc.Longitude)
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:hierarchy.0", hierarchy)
+	if err != nil {
+		return "", err
+	}
+
+	return json, nil
+}
+
+func buildHierarchy(pip *pipclient.PIPClient, latitude string, longitude string) (map[string]int64, error) {
+	h := make(map[string]int64)
+
+	places, err := pip.PointInPolygon(latitude, longitude)
+	if err != nil {
+		return h, err
+	}
+
+	for _, place := range places.Places {
+		placetype := place.WOFPlacetype
+		key := fmt.Sprintf("%s_id", placetype)
+		value := place.WOFId
+		h[key] = value
+	}
+
+	return h, nil
 }

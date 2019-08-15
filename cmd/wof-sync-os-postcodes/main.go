@@ -7,25 +7,37 @@ import (
 	"time"
 
 	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/onsdb"
+	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/pipclient"
 	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/postcodevalidator"
 	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/wofdata"
+
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 )
 
 func main() {
-
-	var onsDBPath = flag.String("ons-db-path", "", "The path to the ONS postcodes sqlite database")
-	var wofDataPath = flag.String("wof-data-path", "", "The path to the ONS postcodes sqlite database")
+	var onsCSVPath = flag.String("ons-csv-path", "", "The path to the ONS postcodes CSV")
+	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
+	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
 	flag.Parse()
 
+	log.Print("Building ONS database")
+
 	onsDBDate := time.Date(2019, time.May, 1, 0, 0, 0, 0, time.UTC)
-	db := onsdb.NewONSDB(*onsDBPath)
+	db := onsdb.NewONSDB(*onsCSVPath)
+	err := db.Build()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Print("Finished building ONS database")
+
+	pip := pipclient.NewPIPClient(*pipHost)
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}
 
-	wof := wofdata.NewWOFData(*wofDataPath)
+	wof := wofdata.NewWOFData(*wofPostalcodesPath)
 
 	cb := func(f geojson.Feature) error {
 		postcode := f.Name()
@@ -67,10 +79,10 @@ func main() {
 			return wof.CeaseFeature(f, onsDBDate)
 		}
 
-		return wof.UpdateFeature(f, postcodeData)
+		return wof.UpdateFeature(f, postcodeData, pip)
 	}
 
-	err := wof.Iterate(cb)
+	err = wof.Iterate(cb)
 	if err != nil {
 		log.Fatal(err)
 	}
