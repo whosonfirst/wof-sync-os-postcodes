@@ -10,12 +10,12 @@ It also needs a running [PIP server](https://github.com/whosonfirst/go-whosonfir
 
 It will ignore the coordinates from Northern Irish postcodes (starting with BT) as these are under more restrictive licensing conditions than the rest of the UK, so aren't suitable for inclusion in Who’s on First. It will use the inception/cessation data, however.
 
-# Requirements
+## Requirements
 
 - Golang 1.12 (might compile on earlier versions, but definitely needs modules support)
 - 6GB RAM (including running the UK admin data in a PIP server)
 
-# Example
+## Example
 
 Build the binary with a simple `make`. Then:
 
@@ -23,7 +23,7 @@ Build the binary with a simple `make`. Then:
 ./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv
 ```
 
-# See also
+## See also
 
 - https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb
 - https://github.com/whosonfirst-data/whosonfirst-data-admin-gb
