@@ -79,13 +79,36 @@ func main() {
 			return wof.CeaseFeature(f, onsDBDate)
 		}
 
+		log.Printf("Updating postcode: %s (ID %s)", postcode, id)
 		return wof.UpdateFeature(f, postcodeData, pip)
 	}
+
+	log.Print("Walking over WOF postcodes")
 
 	err = wof.Iterate(cb)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("Seen %d postcodes", len(seenPostcodes))
+	log.Printf("Seen %d postcodes, now checking for new postcodes", len(seenPostcodes))
+
+	newCount := 0
+
+	onsCB := func(pc *onsdb.PostcodeData) error {
+		// Skip if we've already seen this postcode
+		if seenPostcodes[pc.Postcode] {
+			return nil
+		}
+
+		log.Printf("Creating new postcode: %s", pc.Postcode)
+		newCount++
+		return wof.NewFeature(pc, pip)
+	}
+
+	err = db.Iterate(onsCB)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("Created %d new postcodes", newCount)
 }

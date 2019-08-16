@@ -62,3 +62,14 @@ func (db *ONSDB) GetPostcodeData(postcode string) (*PostcodeData, error) {
 	pcData := db.data[postcode]
 	return pcData, nil
 }
+
+func (db *ONSDB) Iterate(cb func(*PostcodeData) error) error {
+	for _, pc := range db.data {
+		err := cb(pc)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

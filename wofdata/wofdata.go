@@ -2,11 +2,12 @@ package wofdata
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	export "github.com/whosonfirst/go-whosonfirst-export"
+	exporter "github.com/whosonfirst/go-whosonfirst-export/exporter"
 	"github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
@@ -34,6 +35,7 @@ func NewWOFData(dataPath string) *WOFData {
 	return data
 }
 
+// Iterate fires the provided callback for every file in the WOFData path.
 func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
 	localCb := func(fh io.Reader, ctx context.Context, args ...interface{}) error {
 		path, err := index.PathForContext(ctx)
@@ -66,6 +68,7 @@ func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
 
 const edtfDateLayout = "2006-01-02"
 
+// DeprecateFeature deprecates the provided feature and writes it to disk.
 func (d *WOFData) DeprecateFeature(f geojson.Feature) error {
 	bytes := f.Bytes()
 	json := string(bytes)
@@ -93,9 +96,10 @@ func (d *WOFData) DeprecateFeature(f geojson.Feature) error {
 		return err
 	}
 
-	return d.exportFeature(f.Id(), json)
+	return d.exportFeature(json)
 }
 
+// CeaseFeature ceases the provided feature and writes it to disk.
 func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time) error {
 	bytes := f.Bytes()
 	json := string(bytes)
@@ -121,7 +125,7 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time) error {
 		return err
 	}
 
-	return d.exportFeature(f.Id(), json)
+	return d.exportFeature(json)
 }
 
 func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient) error {
@@ -133,24 +137,9 @@ func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, p
 		return err
 	}
 
-	// Don't set geometry for BT postcodes, because the licensing for these is more
-	// restrictive. 🙄
-	if !strings.HasPrefix(f.Name(), "BT") {
-		json, err = setPointGeometry(json, pcData.Latitude, pcData.Longitude)
-		if err != nil {
-			return err
-		}
-
-		// If we've updated the geometry, set the source to OS
-		json, err = sjson.Set(json, "properties.src:geom", "os")
-		if err != nil {
-			return err
-		}
-
-		json, err = setHierarchy(json, pip, pcData)
-		if err != nil {
-			return err
-		}
+	json, err = SetGeometry(json, pcData, pip)
+	if err != nil {
+		return err
 	}
 
 	json, err = setOSProperties(json, pcData)
@@ -158,23 +147,119 @@ func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, p
 		return err
 	}
 
-	return d.exportFeature(f.Id(), json)
+	return d.exportFeature(json)
 }
 
-func (d *WOFData) exportFeature(id string, json string) error {
+func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) error {
+	json := "{}"
+
+	json, err := sjson.Set(json, "type", "Feature")
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:name", pc.Postcode)
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:placetype", "postalcode")
+	if err != nil {
+		return err
+	}
+
+	emptyList := make([]*string, 0)
+
+	json, err = sjson.Set(json, "properties.wof:superseded_by", emptyList)
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:supersedes", emptyList)
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:breaches", emptyList)
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:tags", emptyList)
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:repo", "whosonfirst-data-postalcode-gb")
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.iso:country", "GB")
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.wof:country", "GB")
+	if err != nil {
+		return err
+	}
+
+	json, err = sjson.Set(json, "properties.mz:hierarchy_label", 1)
+	if err != nil {
+		return err
+	}
+
+	json, err = setDates(json, pc)
+	if err != nil {
+		return err
+	}
+
+	json, err = setOSProperties(json, pc)
+	if err != nil {
+		return err
+	}
+
+	json, err = SetGeometry(json, pc, pip)
+	if err != nil {
+		return err
+	}
+
+	return d.exportFeature(json)
+}
+
+func (d *WOFData) exportFeature(json string) error {
+	bytes := []byte(json)
+
 	opts, err := options.NewDefaultOptions()
 	if err != nil {
 		return err
 	}
 
-	bytes := []byte(json)
-
-	idint, err := strconv.ParseInt(id, 10, 64)
+	exp, err := exporter.NewWhosOnFirstExporter(opts)
 	if err != nil {
 		return err
 	}
 
-	path, err := uri.Id2AbsPath(d.dataPath, idint)
+	bytes, err = exp.Export(bytes)
+	if err != nil {
+		return err
+	}
+
+	idResult := gjson.GetBytes(bytes, "id")
+	if !idResult.Exists() {
+		return errors.New("Missing `id` field in JSON")
+	}
+
+	id := idResult.Int()
+
+	path, err := uri.Id2AbsPath(d.dataPath, id)
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(path)
+	err = os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
@@ -192,7 +277,8 @@ func (d *WOFData) exportFeature(id string, json string) error {
 		}
 	}()
 
-	return export.Export(bytes, opts, f)
+	_, err = f.Write(bytes)
+	return err
 }
 
 func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
@@ -221,8 +307,44 @@ func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
 	return json, nil
 }
 
+func SetGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) (string, error) {
+	latitude := pc.Latitude
+	longitude := pc.Longitude
+
+	// Set postcodes where we're not allowed to know where they are to null island
+	if !shouldSetGeometry(pc) {
+		latitude = "0.0"
+		longitude = "0.0"
+	}
+
+	json, err := setPointGeometry(json, latitude, longitude)
+	if err != nil {
+		return json, err
+	}
+
+	if shouldSetGeometry(pc) {
+		// If we've updated the geometry, set the source to OS
+		json, err = sjson.Set(json, "properties.src:geom", "os")
+		if err != nil {
+			return json, err
+		}
+
+		json, err = setHierarchy(json, pip, pc)
+		if err != nil {
+			return json, err
+		}
+	}
+
+	return json, nil
+}
+
 func setPointGeometry(json string, latitude string, longitude string) (string, error) {
-	json, err := sjson.SetRaw(json, "geometry.coordinates.0", longitude)
+	json, err := sjson.Set(json, "geometry.type", "Point")
+	if err != nil {
+		return "", err
+	}
+
+	json, err = sjson.SetRaw(json, "geometry.coordinates.0", longitude)
 	if err != nil {
 		return "", err
 	}
@@ -358,4 +480,11 @@ func buildHierarchy(pip *pipclient.PIPClient, latitude string, longitude string)
 	}
 
 	return h, nil
+}
+
+// Don't set geometry for BT postcodes (Northern Ireland), because the
+// licensing for these is more restrictive. 🙄
+func shouldSetGeometry(pc *onsdb.PostcodeData) bool {
+	name := pc.Postcode
+	return !strings.HasPrefix(name, "BT")
 }
