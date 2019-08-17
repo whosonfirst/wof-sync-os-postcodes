@@ -137,7 +137,7 @@ func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, p
 		return err
 	}
 
-	json, err = SetGeometry(json, pcData, pip)
+	json, err = setGeometry(json, pcData, pip)
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) e
 		return err
 	}
 
-	json, err = SetGeometry(json, pc, pip)
+	json, err = setGeometry(json, pc, pip)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
 	return json, nil
 }
 
-func SetGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) (string, error) {
+func setGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) (string, error) {
 	latitude := pc.Latitude
 	longitude := pc.Longitude
 
@@ -317,22 +317,41 @@ func SetGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) 
 		longitude = "0.0"
 	}
 
+	// Postcodes without geometry in the ONSDB are set to 99.999999
+	if latitude == "99.999999" {
+		latitude = "0.0"
+	}
+
 	json, err := setPointGeometry(json, latitude, longitude)
 	if err != nil {
 		return json, err
 	}
 
-	if shouldSetGeometry(pc) {
-		// If we've updated the geometry, set the source to OS
-		json, err = sjson.Set(json, "properties.src:geom", "os")
+	// If we have invalid geometry
+	if latitude == "0.0" && longitude == "0.0" {
+		// If there's no geometry set the source to unknown and clear the hierarchy
+		json, err = sjson.Set(json, "properties.src:geom", "unknown")
 		if err != nil {
 			return json, err
 		}
 
-		json, err = setHierarchy(json, pip, pc)
+		json, err = sjson.Delete(json, "properties.wof:hierarchy")
 		if err != nil {
 			return json, err
 		}
+
+		return json, nil
+	}
+
+	// If we've updated the geometry, set the source to OS
+	json, err = sjson.Set(json, "properties.src:geom", "os")
+	if err != nil {
+		return json, err
+	}
+
+	json, err = setHierarchy(json, pip, pc)
+	if err != nil {
+		return json, err
 	}
 
 	return json, nil
