@@ -100,6 +100,11 @@ func main() {
 			return nil
 		}
 
+		if !shouldCreateNewPostcode(pc) {
+			log.Printf("Skipping new postcode we're not creating: %s", pc.Postcode)
+			return nil
+		}
+
 		log.Printf("Creating new postcode: %s", pc.Postcode)
 		newCount++
 		return wof.NewFeature(pc, pip)
@@ -111,4 +116,18 @@ func main() {
 	}
 
 	log.Printf("Created %d new postcodes", newCount)
+}
+
+func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
+	// Channel Islands
+	if pc.CountryCode == "L99999999" {
+		return false
+	}
+
+	// Isle of Man
+	if pc.CountryCode == "M99999999" {
+		return false
+	}
+
+	return true
 }
