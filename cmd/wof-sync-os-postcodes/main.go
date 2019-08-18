@@ -44,6 +44,11 @@ func main() {
 
 	wof := wofdata.NewWOFData(*wofPostalcodesPath)
 
+	ceasedCount := 0
+	deprecatedCount := 0
+	updatedCount := 0
+	newCount := 0
+
 	cb := func(f geojson.Feature) error {
 		postcode := f.Name()
 		id := f.Id()
@@ -71,6 +76,7 @@ func main() {
 
 		if !postcodevalidator.Validate(postcode) {
 			log.Printf("Deprecating invalid postcode: %s (ID %s)", postcode, id)
+			deprecatedCount++
 
 			if *dryRun {
 				return nil
@@ -86,6 +92,7 @@ func main() {
 
 		if postcodeData == nil {
 			log.Printf("Ceasing postcode not in ONS DB: %s (ID %s)", postcode, id)
+			ceasedCount++
 
 			if *dryRun {
 				return nil
@@ -94,6 +101,7 @@ func main() {
 		}
 
 		log.Printf("Updating postcode: %s (ID %s)", postcode, id)
+		updatedCount++
 
 		if *dryRun {
 			return nil
@@ -109,8 +117,6 @@ func main() {
 	}
 
 	log.Printf("Seen %d postcodes, now checking for new postcodes", len(seenPostcodes))
-
-	newCount := 0
 
 	onsCB := func(pc *onsdb.PostcodeData) error {
 		// Skip if we've already seen this postcode
@@ -136,7 +142,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Created %d new postcodes", newCount)
+	log.Printf("Stats: %d ceased, %d deprecated, %d updated, %d new", ceasedCount, deprecatedCount, updatedCount, newCount)
 }
 
 func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
