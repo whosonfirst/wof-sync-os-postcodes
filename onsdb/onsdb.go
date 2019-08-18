@@ -1,8 +1,12 @@
 package onsdb
 
 import (
+	"context"
 	"log"
 	"os"
+	"runtime"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/smartystreets/scanners/csv"
 )
@@ -64,12 +68,39 @@ func (db *ONSDB) GetPostcodeData(postcode string) (*PostcodeData, error) {
 }
 
 func (db *ONSDB) Iterate(cb func(*PostcodeData) error) error {
-	for _, pc := range db.data {
-		err := cb(pc)
-		if err != nil {
-			return err
-		}
+	workerCount := runtime.NumCPU() * 2
+	workChan := make(chan *PostcodeData, workerCount*2)
+
+	g, ctx := errgroup.WithContext(context.Background())
+
+	for i := 0; i < workerCount; i++ {
+		g.Go(func() error {
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+
+				case pc, more := <-workChan:
+					if !more {
+						return nil
+					}
+
+					err := cb(pc)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		})
 	}
 
-	return nil
+	go func() {
+		for _, pc := range db.data {
+			workChan <- pc
+		}
+
+		close(workChan)
+	}()
+
+	return g.Wait()
 }

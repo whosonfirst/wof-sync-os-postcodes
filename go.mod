@@ -12,4 +12,5 @@ require (
 	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.10.2
 	github.com/whosonfirst/go-whosonfirst-index v0.1.3
 	github.com/whosonfirst/go-whosonfirst-uri v0.1.0
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
