@@ -120,12 +120,12 @@ func main() {
 
 func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
 	// Channel Islands
-	if pc.CountryCode == "L99999999" {
+	if pc.CountryCode == "L93000001" {
 		return false
 	}
 
 	// Isle of Man
-	if pc.CountryCode == "M99999999" {
+	if pc.CountryCode == "M83000003" {
 		return false
 	}
 
