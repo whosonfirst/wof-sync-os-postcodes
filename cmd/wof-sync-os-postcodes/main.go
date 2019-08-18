@@ -19,7 +19,12 @@ func main() {
 	var onsCSVPath = flag.String("ons-csv-path", "", "The path to the ONS postcodes CSV")
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
+	var dryRun = flag.Bool("dry-run", false, "Set to true to do nothing")
 	flag.Parse()
+
+	if *dryRun {
+		log.Print("Performing dry run")
+	}
 
 	log.Print("Building ONS database")
 
@@ -66,6 +71,11 @@ func main() {
 
 		if !postcodevalidator.Validate(postcode) {
 			log.Printf("Deprecating invalid postcode: %s (ID %s)", postcode, id)
+
+			if *dryRun {
+				return nil
+			}
+
 			return wof.DeprecateFeature(f)
 		}
 
@@ -76,10 +86,18 @@ func main() {
 
 		if postcodeData == nil {
 			log.Printf("Ceasing postcode not in ONS DB: %s (ID %s)", postcode, id)
+
+			if *dryRun {
+				return nil
+			}
 			return wof.CeaseFeature(f, onsDBDate)
 		}
 
 		log.Printf("Updating postcode: %s (ID %s)", postcode, id)
+
+		if *dryRun {
+			return nil
+		}
 		return wof.UpdateFeature(f, postcodeData, pip)
 	}
 
@@ -107,6 +125,9 @@ func main() {
 
 		log.Printf("Creating new postcode: %s", pc.Postcode)
 		newCount++
+		if *dryRun {
+			return nil
+		}
 		return wof.NewFeature(pc, pip)
 	}
 
