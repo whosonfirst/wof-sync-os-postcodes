@@ -69,7 +69,7 @@ func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
 const edtfDateLayout = "2006-01-02"
 
 // DeprecateFeature deprecates the provided feature and writes it to disk.
-func (d *WOFData) DeprecateFeature(f geojson.Feature) error {
+func (d *WOFData) DeprecateFeature(f geojson.Feature, dryRun bool) (changed bool, err error) {
 	bytes := f.Bytes()
 	json := string(bytes)
 
@@ -81,26 +81,32 @@ func (d *WOFData) DeprecateFeature(f geojson.Feature) error {
 
 	if deprecated != "uuuu" {
 		log.Printf("ID %s already deprecated, skipping", f.Id())
-		return nil
+		return
 	}
 
 	now := time.Now()
 
-	json, err := sjson.Set(json, "properties.edtf:deprecated", now.Format(edtfDateLayout))
+	json, err = sjson.Set(json, "properties.edtf:deprecated", now.Format(edtfDateLayout))
 	if err != nil {
-		return err
+		return
 	}
 
 	json, err = sjson.Set(json, "properties.mz:is_current", 0)
 	if err != nil {
-		return err
+		return
 	}
 
-	return d.exportFeature(json)
+	changed = true
+
+	if !dryRun {
+		err = d.exportFeature(json)
+	}
+
+	return
 }
 
 // CeaseFeature ceases the provided feature and writes it to disk.
-func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time) error {
+func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (changed bool, err error) {
 	bytes := f.Bytes()
 	json := string(bytes)
 
@@ -112,42 +118,54 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time) error {
 
 	if cessation != "uuuu" {
 		log.Printf("ID %s already ceased, skipping", f.Id())
-		return nil
+		return
 	}
 
-	json, err := sjson.Set(json, "properties.edtf:cessation", date.Format(edtfDateLayout))
+	json, err = sjson.Set(json, "properties.edtf:cessation", date.Format(edtfDateLayout))
 	if err != nil {
-		return err
+		return
 	}
 
 	json, err = sjson.Set(json, "properties.mz:is_current", 0)
 	if err != nil {
-		return err
+		return
 	}
 
-	return d.exportFeature(json)
+	changed = true
+
+	if !dryRun {
+		err = d.exportFeature(json)
+	}
+
+	return
 }
 
-func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient) error {
+func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) (changed bool, err error) {
 	bytes := f.Bytes()
 	json := string(bytes)
 
-	json, err := setDates(json, pcData)
+	json, err = setDates(json, pcData)
 	if err != nil {
-		return err
+		return
 	}
 
 	json, err = setGeometry(json, pcData, pip)
 	if err != nil {
-		return err
+		return
 	}
 
 	json, err = setOSProperties(json, pcData)
 	if err != nil {
-		return err
+		return
 	}
 
-	return d.exportFeature(json)
+	changed = true
+
+	if !dryRun {
+		err = d.exportFeature(json)
+	}
+
+	return
 }
 
 func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) error {

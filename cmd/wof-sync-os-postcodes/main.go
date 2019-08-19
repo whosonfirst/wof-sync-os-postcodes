@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/onsdb"
@@ -19,10 +20,12 @@ func main() {
 	var onsCSVPath = flag.String("ons-csv-path", "", "The path to the ONS postcodes CSV")
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
-	var dryRun = flag.Bool("dry-run", false, "Set to true to do nothing")
+	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	flag.Parse()
 
-	if *dryRun {
+	dryRun := *dryRunFlag
+
+	if dryRun {
 		log.Print("Performing dry run")
 	}
 
@@ -44,10 +47,10 @@ func main() {
 
 	wof := wofdata.NewWOFData(*wofPostalcodesPath)
 
-	ceasedCount := 0
-	deprecatedCount := 0
-	updatedCount := 0
-	newCount := 0
+	var ceasedCounter uint64
+	var deprecatedCounter uint64
+	var updatedCounter uint64
+	var newCounter uint64
 
 	cb := func(f geojson.Feature) error {
 		postcode := f.Name()
@@ -75,14 +78,17 @@ func main() {
 		}
 
 		if !postcodevalidator.Validate(postcode) {
-			log.Printf("Deprecating invalid postcode: %s (ID %s)", postcode, id)
-			deprecatedCount++
-
-			if *dryRun {
-				return nil
+			changed, err := wof.DeprecateFeature(f, dryRun)
+			if changed {
+				log.Printf("Deprecated invalid postcode: %s (ID %s)", postcode, id)
+				atomic.AddUint64(&deprecatedCounter, 1)
 			}
 
-			return wof.DeprecateFeature(f)
+			if err != nil {
+				return err
+			}
+
+			return nil
 		}
 
 		postcodeData, err := db.GetPostcodeData(postcode)
@@ -91,22 +97,30 @@ func main() {
 		}
 
 		if postcodeData == nil {
-			log.Printf("Ceasing postcode not in ONS DB: %s (ID %s)", postcode, id)
-			ceasedCount++
-
-			if *dryRun {
-				return nil
+			changed, err := wof.CeaseFeature(f, onsDBDate, dryRun)
+			if changed {
+				log.Printf("Ceased postcode not in ONS DB: %s (ID %s)", postcode, id)
+				atomic.AddUint64(&ceasedCounter, 1)
 			}
-			return wof.CeaseFeature(f, onsDBDate)
-		}
 
-		log.Printf("Updating postcode: %s (ID %s)", postcode, id)
-		updatedCount++
+			if err != nil {
+				return err
+			}
 
-		if *dryRun {
 			return nil
 		}
-		return wof.UpdateFeature(f, postcodeData, pip)
+
+		changed, err := wof.UpdateFeature(f, postcodeData, pip, dryRun)
+		if changed {
+			log.Printf("Updated postcode: %s (ID %s)", postcode, id)
+			atomic.AddUint64(&updatedCounter, 1)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	log.Print("Walking over WOF postcodes")
@@ -130,8 +144,8 @@ func main() {
 		}
 
 		log.Printf("Creating new postcode: %s", pc.Postcode)
-		newCount++
-		if *dryRun {
+		atomic.AddUint64(&newCounter, 1)
+		if dryRun {
 			return nil
 		}
 		return wof.NewFeature(pc, pip)
@@ -142,7 +156,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Stats: %d ceased, %d deprecated, %d updated, %d new", ceasedCount, deprecatedCount, updatedCount, newCount)
+	ceased := atomic.LoadUint64(&ceasedCounter)
+	deprecated := atomic.LoadUint64(&deprecatedCounter)
+	updated := atomic.LoadUint64(&updatedCounter)
+	new := atomic.LoadUint64(&newCounter)
+
+	log.Printf("Stats: %d ceased, %d deprecated, %d updated, %d new", ceased, deprecated, updated, new)
 }
 
 func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
