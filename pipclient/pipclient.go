@@ -39,6 +39,8 @@ func (client *PIPClient) PointInPolygon(latitude string, longitude string) (*Pla
 		return nil, err
 	}
 
+	defer res.Body.Close()
+	
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
