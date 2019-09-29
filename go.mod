@@ -1,4 +1,4 @@
-module github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync
+module github.com/tomtaylor/wof-sync-os-postcodes
 
 go 1.12
 

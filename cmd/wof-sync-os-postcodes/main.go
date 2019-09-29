@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/onsdb"
-	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/pipclient"
-	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/postcodevalidator"
-	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/wofdata"
+	"github.com/tomtaylor/wof-sync-os-postcodes/onsdb"
+	"github.com/tomtaylor/wof-sync-os-postcodes/pipclient"
+	"github.com/tomtaylor/wof-sync-os-postcodes/postcodevalidator"
+	"github.com/tomtaylor/wof-sync-os-postcodes/wofdata"
 
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"

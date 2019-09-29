@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/onsdb"
-	"github.com/tomtaylor/whosonfirst-postalcode-gb-os-sync/pipclient"
+	"github.com/tomtaylor/wof-sync-os-postcodes/onsdb"
+	"github.com/tomtaylor/wof-sync-os-postcodes/pipclient"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
