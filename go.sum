@@ -117,6 +117,8 @@ github.com/whosonfirst/go-spatialite v0.1.0/go.mod h1:w1O/DKimk4wiV+5d2BzWYnxvbd
 github.com/whosonfirst/go-whosonfirst-cli v0.1.0/go.mod h1:Edy+amD+fMq1QS1yxB3u8maA8I93q/LG7JRNh+fsdfc=
 github.com/whosonfirst/go-whosonfirst-crawl v0.1.0 h1:HD8xJcPME3nWoJH58SXT84q0tjBCF3Oc5jrmk5eIriQ=
 github.com/whosonfirst/go-whosonfirst-crawl v0.1.0/go.mod h1:ZIYj6wdjduyJkWHwg4P3gNeLgWMW9uHZOn04eusRnLI=
+github.com/whosonfirst/go-whosonfirst-crawl v0.1.1-0.20190822225219-b571d777dc43 h1:ARl4AZ+vdqQaIA9swwdWsLYEgL8lrkm41iSjg8a9iZM=
+github.com/whosonfirst/go-whosonfirst-crawl v0.1.1-0.20190822225219-b571d777dc43/go.mod h1:1MO0J/gWIX40rvB0jnPfAYShl2jxCUjjmBUSXqQ2C7k=
 github.com/whosonfirst/go-whosonfirst-csv v0.1.0 h1:ootWwNZNxXRGrWVQt17NFtcyukpWrgWsgKxbELLF8Sg=
 github.com/whosonfirst/go-whosonfirst-csv v0.1.0/go.mod h1:jhAZLURSWJN7mEpdQeXeSQnmLJq+FkTL2Q32iV0170I=
 github.com/whosonfirst/go-whosonfirst-export v0.1.0 h1:TyweYI1wFG3oOl66F7/az73QUf/GUAbqHVrAoYVEURA=
