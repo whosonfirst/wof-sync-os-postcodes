@@ -3,8 +3,11 @@ package pipclient
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
+	"runtime"
+	"time"
 
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 )
@@ -19,8 +22,23 @@ type PlacesResponse struct {
 }
 
 func NewPIPClient(u string) *PIPClient {
-	httpClient := http.DefaultClient
-	return &PIPClient{http: httpClient, url: u}
+	maxConns := runtime.NumCPU()
+
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConnsPerHost:   maxConns,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	client := &http.Client{Transport: tr}
+	return &PIPClient{http: client, url: u}
 }
 
 func (client *PIPClient) PointInPolygon(latitude string, longitude string) (*PlacesResponse, error) {
@@ -40,7 +58,7 @@ func (client *PIPClient) PointInPolygon(latitude string, longitude string) (*Pla
 	}
 
 	defer res.Body.Close()
-	
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
