@@ -3,6 +3,7 @@ module github.com/tomtaylor/wof-sync-os-postcodes
 go 1.12
 
 require (
+	github.com/aaronland/go-artisanal-integers v0.1.0
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
 	github.com/skelterjohn/geom v0.0.0-20180103142417-96f3e8a219c5 // indirect
 	github.com/smartystreets/scanners v1.0.1

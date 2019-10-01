@@ -1,5 +1,6 @@
 # github.com/aaronland/go-artisanal-integers v0.1.0
 github.com/aaronland/go-artisanal-integers
+github.com/aaronland/go-artisanal-integers/client
 # github.com/aaronland/go-brooklynintegers-api v1.0.1
 github.com/aaronland/go-brooklynintegers-api
 # github.com/emirpasic/gods v1.12.0

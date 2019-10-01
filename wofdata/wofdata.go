@@ -27,10 +27,16 @@ import (
 
 type WOFData struct {
 	dataPath string
+	exp      exporter.Exporter
 }
 
-func NewWOFData(dataPath string) *WOFData {
-	data := &WOFData{dataPath: dataPath}
+func NewWOFData(dataPath string, expOpts options.Options) *WOFData {
+	exp, err := exporter.NewWhosOnFirstExporter(expOpts)
+	if err != nil {
+		return nil
+	}
+
+	data := &WOFData{dataPath: dataPath, exp: exp}
 
 	return data
 }
@@ -249,17 +255,7 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) e
 func (d *WOFData) exportFeature(json string) error {
 	bytes := []byte(json)
 
-	opts, err := options.NewDefaultOptions()
-	if err != nil {
-		return err
-	}
-
-	exp, err := exporter.NewWhosOnFirstExporter(opts)
-	if err != nil {
-		return err
-	}
-
-	bytes, err = exp.Export(bytes)
+	bytes, err := d.exp.Export(bytes)
 	if err != nil {
 		return err
 	}
