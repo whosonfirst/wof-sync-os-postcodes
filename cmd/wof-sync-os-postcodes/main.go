@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"sync"
@@ -15,6 +16,10 @@ import (
 	exportOptions "github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
+
+	proxy "github.com/aaronland/go-artisanal-integers-proxy"
+	pool "github.com/aaronland/go-pool"
+	"github.com/whosonfirst/go-whosonfirst-id-proxy/provider"
 )
 
 func main() {
@@ -30,10 +35,8 @@ func main() {
 		log.Print("Performing dry run")
 	}
 
-	var err error
-	var opts exportOptions.Options
-
-	opts, err = exportOptions.NewDefaultOptions()
+	ctx := context.Background()
+	opts, err := createExportOptions(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +45,7 @@ func main() {
 
 	log.Print("Building ONS database")
 
-	onsDBDate := time.Date(2019, time.May, 1, 0, 0, 0, 0, time.UTC)
+	onsDBDate := time.Date(2020, time.February, 1, 0, 0, 0, 0, time.UTC)
 	db := onsdb.NewONSDB(*onsCSVPath)
 	err = db.Build()
 	if err != nil {
@@ -185,4 +188,31 @@ func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
 	}
 
 	return true
+}
+
+func createExportOptions(ctx context.Context) (exportOptions.Options, error) {
+	pl, err := pool.NewPool(ctx, "memory://")
+	if err != nil {
+		return nil, err
+	}
+
+	svcArgs := proxy.ProxyServiceArgs{
+		BrooklynIntegers: true,
+		MissionIntegers:  true,
+		LondonIntegers:   true,
+		MinCount:         100,
+	}
+
+	svc, err := proxy.NewProxyServiceWithPool(pl, svcArgs)
+	if err != nil {
+		return nil, err
+	}
+
+	pr, err := provider.NewProxyServiceProvider(svc)
+	if err != nil {
+		return nil, err
+	}
+
+	opts, err := exportOptions.NewDefaultOptionsWithProvider(pr)
+	return opts, err
 }
