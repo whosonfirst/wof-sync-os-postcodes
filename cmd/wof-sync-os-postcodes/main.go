@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/tomtaylor/wof-sync-os-postcodes/postcodevalidator"
 	"github.com/tomtaylor/wof-sync-os-postcodes/wofdata"
 
-	"github.com/aaronland/go-artisanal-integers/client"
 	exportOptions "github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
@@ -24,7 +22,6 @@ func main() {
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
-	var integerHost = flag.String("integer-host", "", "The host of the integer server, defaulting to Brooklyn")
 	flag.Parse()
 
 	dryRun := *dryRunFlag
@@ -33,32 +30,12 @@ func main() {
 		log.Print("Performing dry run")
 	}
 
-	var opts exportOptions.Options
 	var err error
+	var opts exportOptions.Options
 
-	if *integerHost != "" {
-		integerURL, err := url.Parse(*integerHost)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Getting integers from %s", integerURL.String())
-
-		c, err := client.NewHTTPClient(integerURL)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		opts, err = exportOptions.NewDefaultOptionsWithArtisanalIntegerClient(c)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-	} else {
-		opts, err = exportOptions.NewDefaultOptions()
-		if err != nil {
-			log.Fatal(err)
-		}
+	opts, err = exportOptions.NewDefaultOptions()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	wof := wofdata.NewWOFData(*wofPostalcodesPath, opts)

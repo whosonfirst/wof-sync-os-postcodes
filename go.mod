@@ -3,15 +3,13 @@ module github.com/tomtaylor/wof-sync-os-postcodes
 go 1.12
 
 require (
-	github.com/aaronland/go-artisanal-integers v0.1.0
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
-	github.com/skelterjohn/geom v0.0.0-20180103142417-96f3e8a219c5 // indirect
 	github.com/smartystreets/scanners v1.0.1
-	github.com/tidwall/gjson v1.3.2
+	github.com/tidwall/gjson v1.3.5
 	github.com/tidwall/sjson v1.0.4
 	github.com/whosonfirst/go-whosonfirst-crawl v0.1.1-0.20190822225219-b571d777dc43 // indirect
-	github.com/whosonfirst/go-whosonfirst-export v0.1.1
-	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.11.0
+	github.com/whosonfirst/go-whosonfirst-export v0.3.0
+	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.12.2
 	github.com/whosonfirst/go-whosonfirst-index v0.1.3
 	github.com/whosonfirst/go-whosonfirst-sqlite v0.1.1 // indirect
 	github.com/whosonfirst/go-whosonfirst-uri v0.1.0
