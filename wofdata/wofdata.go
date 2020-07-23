@@ -23,6 +23,9 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	index "github.com/whosonfirst/go-whosonfirst-index"
 	uri "github.com/whosonfirst/go-whosonfirst-uri"
+
+	// Enable the filesystem driver
+	_ "github.com/whosonfirst/go-whosonfirst-index/fs"
 )
 
 type WOFData struct {
@@ -43,7 +46,7 @@ func NewWOFData(dataPath string, expOpts options.Options) *WOFData {
 
 // Iterate fires the provided callback for every file in the WOFData path.
 func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
-	localCb := func(fh io.Reader, ctx context.Context, args ...interface{}) error {
+	localCb := func(ctx context.Context, fh io.Reader, args ...interface{}) error {
 		path, err := index.PathForContext(ctx)
 		if err != nil {
 			return err
