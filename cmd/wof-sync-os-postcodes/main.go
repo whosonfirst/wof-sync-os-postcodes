@@ -198,8 +198,6 @@ func createExportOptions(ctx context.Context) (exportOptions.Options, error) {
 
 	svcArgs := proxy.ProxyServiceArgs{
 		BrooklynIntegers: true,
-		MissionIntegers:  true,
-		LondonIntegers:   true,
 		MinCount:         100,
 	}
 
