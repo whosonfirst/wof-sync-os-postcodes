@@ -27,6 +27,7 @@ func main() {
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
+	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
 	flag.Parse()
 
 	dryRun := *dryRunFlag
@@ -54,7 +55,15 @@ func main() {
 
 	log.Print("Finished building ONS database")
 
-	pip := pipclient.NewPIPClient(*pipHost)
+	// Use separate pipclients for creating and updating features, so we can
+	// enable/disable them independently.
+	createPip := pipclient.NewPIPClient(*pipHost)
+	var updatePip *pipclient.PIPClient
+	if *noUpdateHierarchy {
+		log.Print("Updating hierarchy for existing features is disabled")
+	} else {
+		updatePip = pipclient.NewPIPClient(*pipHost)
+	}
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}
@@ -122,7 +131,7 @@ func main() {
 			return nil
 		}
 
-		changed, err := wof.UpdateFeature(f, postcodeData, pip, dryRun)
+		changed, err := wof.UpdateFeature(f, postcodeData, updatePip, dryRun)
 		if changed {
 			log.Printf("Updated postcode: %s (ID %s)", postcode, id)
 			atomic.AddUint64(&updatedCounter, 1)
@@ -160,7 +169,7 @@ func main() {
 		if dryRun {
 			return nil
 		}
-		return wof.NewFeature(pc, pip)
+		return wof.NewFeature(pc, createPip)
 	}
 
 	err = db.Iterate(onsCB)
