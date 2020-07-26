@@ -48,7 +48,7 @@ github.com/tidwall/pretty
 github.com/tidwall/sjson
 # github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
 github.com/whosonfirst/go-whosonfirst-crawl
-# github.com/whosonfirst/go-whosonfirst-export v0.3.2
+# github.com/whosonfirst/go-whosonfirst-export v0.3.3
 github.com/whosonfirst/go-whosonfirst-export
 github.com/whosonfirst/go-whosonfirst-export/options
 github.com/whosonfirst/go-whosonfirst-export/properties
