@@ -98,30 +98,32 @@ func main() {
 			return nil
 		}
 
-		if !postcodevalidator.Validate(postcode) {
-			changed, err := wof.DeprecateFeature(f, dryRun)
-			if changed {
-				log.Printf("Deprecated invalid postcode: %s (ID %s)", postcode, id)
-				atomic.AddUint64(&deprecatedCounter, 1)
-			}
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}
-
 		postcodeData, err := db.GetPostcodeData(postcode)
 		if err != nil {
 			return err
 		}
 
 		if postcodeData == nil {
-			changed, err := wof.CeaseFeature(f, onsDBDate, dryRun)
+			// If we can't find the postcode in the database but it's valid, then cease it
+			if postcodevalidator.Validate(postcode) {
+				changed, err := wof.CeaseFeature(f, onsDBDate, dryRun)
+				if changed {
+					log.Printf("Ceased postcode not in ONS DB: %s (ID %s)", postcode, id)
+					atomic.AddUint64(&ceasedCounter, 1)
+				}
+
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}
+
+			// If it's not valid, then deprecate it, as it probably should never have existed
+			changed, err := wof.DeprecateFeature(f, dryRun)
 			if changed {
-				log.Printf("Ceased postcode not in ONS DB: %s (ID %s)", postcode, id)
-				atomic.AddUint64(&ceasedCounter, 1)
+				log.Printf("Deprecated invalid postcode: %s (ID %s)", postcode, id)
+				atomic.AddUint64(&deprecatedCounter, 1)
 			}
 
 			if err != nil {

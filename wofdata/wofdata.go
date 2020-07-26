@@ -1,6 +1,8 @@
 package wofdata
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -17,7 +19,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	exporter "github.com/whosonfirst/go-whosonfirst-export/exporter"
+	export "github.com/whosonfirst/go-whosonfirst-export"
 	"github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
@@ -29,17 +31,12 @@ import (
 )
 
 type WOFData struct {
-	dataPath string
-	exp      exporter.Exporter
+	dataPath      string
+	exportOptions options.Options
 }
 
 func NewWOFData(dataPath string, expOpts options.Options) *WOFData {
-	exp, err := exporter.NewWhosOnFirstExporter(expOpts)
-	if err != nil {
-		return nil
-	}
-
-	data := &WOFData{dataPath: dataPath, exp: exp}
+	data := &WOFData{dataPath: dataPath, exportOptions: expOpts}
 
 	return data
 }
@@ -81,6 +78,7 @@ const edtfDateLayout = "2006-01-02"
 func (d *WOFData) DeprecateFeature(f geojson.Feature, dryRun bool) (changed bool, err error) {
 	bytes := f.Bytes()
 	json := string(bytes)
+	originalJSON := string(bytes)
 
 	deprecated := "uuuu"
 	result := gjson.Get(json, "properties.edtf:deprecated")
@@ -105,10 +103,8 @@ func (d *WOFData) DeprecateFeature(f geojson.Feature, dryRun bool) (changed bool
 		return
 	}
 
-	changed = true
-
 	if !dryRun {
-		err = d.exportFeature(json)
+		changed, err = d.exportFeature(json, originalJSON)
 	}
 
 	return
@@ -118,6 +114,7 @@ func (d *WOFData) DeprecateFeature(f geojson.Feature, dryRun bool) (changed bool
 func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (changed bool, err error) {
 	bytes := f.Bytes()
 	json := string(bytes)
+	originalJSON := string(bytes)
 
 	cessation := "uuuu"
 	result := gjson.Get(json, "properties.edtf:cessation")
@@ -140,10 +137,8 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (
 		return
 	}
 
-	changed = true
-
 	if !dryRun {
-		err = d.exportFeature(json)
+		changed, err = d.exportFeature(json, originalJSON)
 	}
 
 	return
@@ -152,6 +147,7 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (
 func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) (changed bool, err error) {
 	bytes := f.Bytes()
 	json := string(bytes)
+	originalJSON := string(bytes)
 
 	json, err = setDates(json, pcData)
 	if err != nil {
@@ -168,10 +164,8 @@ func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, p
 		return
 	}
 
-	changed = true
-
 	if !dryRun {
-		err = d.exportFeature(json)
+		changed, err = d.exportFeature(json, originalJSON)
 	}
 
 	return
@@ -252,40 +246,57 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) e
 		return err
 	}
 
-	return d.exportFeature(json)
+	_, err = d.exportFeature(json, "")
+	return err
 }
 
-func (d *WOFData) exportFeature(json string) error {
-	bytes := []byte(json)
+func (d *WOFData) exportFeature(json string, originalJSON string) (changed bool, err error) {
+	jsonBytes := []byte(json)
+	originalJSONBytes := []byte(originalJSON)
 
-	bytes, err := d.exp.Export(bytes)
+	var outputBuf bytes.Buffer
+	writer := bufio.NewWriter(&outputBuf)
+
+	changed, err = export.ExportChanged(jsonBytes, originalJSONBytes, d.exportOptions, writer)
 	if err != nil {
-		return err
+		return
 	}
 
-	idResult := gjson.GetBytes(bytes, "id")
+	if !changed {
+		return
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return
+	}
+
+	jsonBytes = outputBuf.Bytes()
+
+	idResult := gjson.GetBytes(jsonBytes, "id")
 	if !idResult.Exists() {
-		return errors.New("Missing `id` field in JSON")
+		err = errors.New("Missing `id` field in JSON")
+		return
 	}
 
 	id := idResult.Int()
 
 	path, err := uri.Id2AbsPath(d.dataPath, id)
 	if err != nil {
-		return err
+		return
 	}
 
 	dir := filepath.Dir(path)
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
-		return err
+		return
 	}
 
 	log.Printf("Writing to file %s", path)
 
 	f, err := os.Create(path)
 	if err != nil {
-		return err
+		return
 	}
 
 	defer func() {
@@ -294,8 +305,8 @@ func (d *WOFData) exportFeature(json string) error {
 		}
 	}()
 
-	_, err = f.Write(bytes)
-	return err
+	_, err = f.Write(jsonBytes)
+	return
 }
 
 func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
@@ -366,9 +377,11 @@ func setGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) 
 		return json, err
 	}
 
-	json, err = setHierarchy(json, pip, pc)
-	if err != nil {
-		return json, err
+	if pip != nil {
+		json, err = setHierarchy(json, pip, pc)
+		if err != nil {
+			return json, err
+		}
 	}
 
 	return json, nil
