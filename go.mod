@@ -9,7 +9,7 @@ require (
 	github.com/smartystreets/scanners v1.0.1
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/sjson v1.0.4
-	github.com/whosonfirst/go-whosonfirst-export v0.3.1
+	github.com/whosonfirst/go-whosonfirst-export v0.3.2
 	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.12.3
 	github.com/whosonfirst/go-whosonfirst-id-proxy v0.0.1
 	github.com/whosonfirst/go-whosonfirst-index v0.3.1

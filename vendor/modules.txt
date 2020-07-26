@@ -46,18 +46,17 @@ github.com/tidwall/match
 github.com/tidwall/pretty
 # github.com/tidwall/sjson v1.0.4
 github.com/tidwall/sjson
-# github.com/tomtaylor/go-whosonfirst-format v0.2.0
-github.com/tomtaylor/go-whosonfirst-format
 # github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
 github.com/whosonfirst/go-whosonfirst-crawl
-# github.com/whosonfirst/go-whosonfirst-export v0.3.1
+# github.com/whosonfirst/go-whosonfirst-export v0.3.2
 github.com/whosonfirst/go-whosonfirst-export
-github.com/whosonfirst/go-whosonfirst-export/exporter
 github.com/whosonfirst/go-whosonfirst-export/options
 github.com/whosonfirst/go-whosonfirst-export/properties
 # github.com/whosonfirst/go-whosonfirst-flags v0.1.0
 github.com/whosonfirst/go-whosonfirst-flags
 github.com/whosonfirst/go-whosonfirst-flags/existential
+# github.com/whosonfirst/go-whosonfirst-format v0.3.0
+github.com/whosonfirst/go-whosonfirst-format
 # github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.12.3
 github.com/whosonfirst/go-whosonfirst-geojson-v2
 github.com/whosonfirst/go-whosonfirst-geojson-v2/feature
