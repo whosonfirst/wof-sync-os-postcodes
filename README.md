@@ -12,7 +12,7 @@ It will ignore the coordinates from Northern Irish postcodes (starting with BT) 
 
 ## Requirements
 
-- Golang 1.12 (might compile on earlier versions, but definitely needs modules support)
+- Golang 1.17
 - 6GB RAM (including running the UK admin data in a PIP server)
 
 ## Example
@@ -20,7 +20,7 @@ It will ignore the coordinates from Northern Irish postcodes (starting with BT) 
 Build the binary with a simple `make`. Then:
 
 ```shell
-./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv
+./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01
 ```
 
 ## See also
