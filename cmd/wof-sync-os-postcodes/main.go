@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tomtaylor/wof-sync-os-postcodes/onsdb"
-	"github.com/tomtaylor/wof-sync-os-postcodes/pipclient"
-	"github.com/tomtaylor/wof-sync-os-postcodes/postcodevalidator"
-	"github.com/tomtaylor/wof-sync-os-postcodes/wofdata"
+	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
+	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
+	"github.com/whosonfirst/wof-sync-os-postcodes/postcodevalidator"
+	"github.com/whosonfirst/wof-sync-os-postcodes/wofdata"
 
 	exportOptions "github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"

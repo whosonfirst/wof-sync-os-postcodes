@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tomtaylor/wof-sync-os-postcodes/onsdb"
-	"github.com/tomtaylor/wof-sync-os-postcodes/pipclient"
+	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
+	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
