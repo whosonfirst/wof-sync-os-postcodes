@@ -24,6 +24,7 @@ import (
 
 func main() {
 	var onsCSVPath = flag.String("ons-csv-path", "", "The path to the ONS postcodes CSV")
+	var onsDate = flag.String("ons-date", "", "The date of the ONS postalcodes CSV")
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
@@ -44,9 +45,12 @@ func main() {
 
 	wof := wofdata.NewWOFData(*wofPostalcodesPath, opts)
 
-	log.Print("Building ONS database")
+	onsDBDate, err := time.Parse("2006-01-02", *onsDate)
+	if err != nil {
+		log.Fatalf("Missing or invalid -ons-date flag - make sure you explicitly set the date of the ONS database you're syncing against: %s", err)
+	}
 
-	onsDBDate := time.Date(2020, time.February, 1, 0, 0, 0, 0, time.UTC)
+	log.Print("Building ONS database")
 	db := onsdb.NewONSDB(*onsCSVPath)
 	err = db.Build()
 	if err != nil {
