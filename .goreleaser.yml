@@ -1,0 +1,33 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  -
+    id: wof-sync-os-postcodes
+    binary: wof-sync-os-postcodes
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    main: ./cmd/wof-sync-os-postcodes
+archives:
+  -
+    id: wof-sync-os-postcodes
+    builds:
+      - wof-sync-os-postcodes
+    format: binary
+    replacements:
+      386: i386
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
