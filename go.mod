@@ -6,6 +6,7 @@ require (
 	github.com/aaronland/go-artisanal-integers-proxy v0.2.5
 	github.com/aaronland/go-pool v1.0.0
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/sfomuseum/go-edtf v0.2.3
 	github.com/smartystreets/scanners v1.0.4
 	github.com/tidwall/gjson v1.8.1
 	github.com/tidwall/sjson v1.1.7
@@ -34,7 +35,6 @@ require (
 	github.com/mmcloughlin/geohash v0.10.0 // indirect
 	github.com/paulmach/go.geojson v1.4.0 // indirect
 	github.com/paulmach/orb v0.2.2 // indirect
-	github.com/sfomuseum/go-edtf v0.2.3 // indirect
 	github.com/skelterjohn/geom v0.0.0-20180103142417-96f3e8a219c5 // indirect
 	github.com/tidwall/match v1.0.3 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sfomuseum/go-edtf"
 	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
 	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
 
@@ -80,13 +81,13 @@ func (d *WOFData) DeprecateFeature(f geojson.Feature, dryRun bool) (changed bool
 	json := string(bytes)
 	originalJSON := string(bytes)
 
-	deprecated := "uuuu"
+	deprecated := edtf.UNSPECIFIED
 	result := gjson.Get(json, "properties.edtf:deprecated")
 	if result.Exists() {
 		deprecated = result.String()
 	}
 
-	if deprecated != "uuuu" {
+	if deprecated != edtf.UNSPECIFIED {
 		log.Printf("ID %s already deprecated, skipping", f.Id())
 		return
 	}
@@ -116,13 +117,13 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (
 	json := string(bytes)
 	originalJSON := string(bytes)
 
-	cessation := "uuuu"
+	cessation := edtf.UNSPECIFIED
 	result := gjson.Get(json, "properties.edtf:cessation")
 	if result.Exists() {
 		cessation = result.String()
 	}
 
-	if cessation != "uuuu" {
+	if cessation != edtf.UNSPECIFIED {
 		log.Printf("ID %s already ceased, skipping", f.Id())
 		return
 	}
@@ -323,7 +324,7 @@ func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
 	}
 
 	isCurrent := 1
-	if cessation != "uuuu" {
+	if cessation != edtf.UNSPECIFIED {
 		isCurrent = 0
 	}
 
@@ -488,7 +489,7 @@ func setOSProperties(json string, pc *onsdb.PostcodeData) (string, error) {
 
 func convertStringToEDTF(s string) string {
 	if s == "" {
-		return "uuuu"
+		return edtf.UNSPECIFIED
 	}
 
 	t, err := time.Parse("200601", s)
