@@ -20,7 +20,7 @@ git config gc.auto 0
 cd ..
 
 # Grab the latest release
-DOWNLOAD_URL=$(curl -sL wofcurl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-postcodes/releases/latest" | jq -r '.assets[].browser_download_url' | grep linux_x86_64)
+DOWNLOAD_URL=$(curl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-postcodes/releases/latest" | jq -r '.assets[].browser_download_url' | grep linux_x86_64)
 curl -sL "${DOWNLOAD_URL}" -o wof-sync-os-postcodes
 chmod +x wof-sync-os-postcodes
 
