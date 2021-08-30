@@ -276,7 +276,7 @@ func (d *WOFData) exportFeature(json string, originalJSON string) (changed bool,
 
 	idResult := gjson.GetBytes(jsonBytes, "id")
 	if !idResult.Exists() {
-		err = errors.New("Missing `id` field in JSON")
+		err = errors.New("missing `id` field in JSON")
 		return
 	}
 
