@@ -6,6 +6,7 @@ require (
 	github.com/aaronland/go-artisanal-integers-proxy v0.2.5
 	github.com/aaronland/go-pool v1.0.0
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/saracen/walker v0.1.2
 	github.com/sfomuseum/go-edtf v0.2.3
 	github.com/smartystreets/scanners v1.0.4
 	github.com/tidwall/gjson v1.8.1
@@ -13,7 +14,6 @@ require (
 	github.com/whosonfirst/go-whosonfirst-export v0.4.0
 	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.16.3
 	github.com/whosonfirst/go-whosonfirst-id-proxy v0.0.1
-	github.com/whosonfirst/go-whosonfirst-index v0.3.4
 	github.com/whosonfirst/go-whosonfirst-uri v1.1.0
 	github.com/whosonfirst/warning v0.1.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -22,7 +22,6 @@ require (
 require (
 	github.com/aaronland/go-artisanal-integers v0.1.1 // indirect
 	github.com/aaronland/go-brooklynintegers-api v1.2.2 // indirect
-	github.com/aaronland/go-json-query v0.0.2 // indirect
 	github.com/aaronland/go-londonintegers-api v0.1.1 // indirect
 	github.com/aaronland/go-missionintegers-api v0.1.1 // indirect
 	github.com/aaronland/go-roster v0.0.2 // indirect
@@ -38,7 +37,6 @@ require (
 	github.com/skelterjohn/geom v0.0.0-20180103142417-96f3e8a219c5 // indirect
 	github.com/tidwall/match v1.0.3 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	github.com/whosonfirst/go-whosonfirst-crawl v0.2.1 // indirect
 	github.com/whosonfirst/go-whosonfirst-flags v0.4.3 // indirect
 	github.com/whosonfirst/go-whosonfirst-format v0.3.6 // indirect
 	github.com/whosonfirst/go-whosonfirst-hash v0.1.0 // indirect
@@ -47,7 +45,6 @@ require (
 	github.com/whosonfirst/go-whosonfirst-placetypes v0.3.0 // indirect
 	github.com/whosonfirst/go-whosonfirst-sources v0.1.0 // indirect
 	github.com/whosonfirst/go-whosonfirst-spr/v2 v2.0.0 // indirect
-	github.com/whosonfirst/walk v0.0.1 // indirect
 	go.uber.org/ratelimit v0.2.0 // indirect
 )
 

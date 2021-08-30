@@ -3,10 +3,8 @@ package wofdata
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,15 +18,12 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/saracen/walker"
 	export "github.com/whosonfirst/go-whosonfirst-export"
 	"github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
-	index "github.com/whosonfirst/go-whosonfirst-index"
 	uri "github.com/whosonfirst/go-whosonfirst-uri"
-
-	// Enable the filesystem driver
-	_ "github.com/whosonfirst/go-whosonfirst-index/fs"
 )
 
 type WOFData struct {
@@ -44,10 +39,13 @@ func NewWOFData(dataPath string, expOpts options.Options) *WOFData {
 
 // Iterate fires the provided callback for every file in the WOFData path.
 func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
-	localCb := func(ctx context.Context, fh io.Reader, args ...interface{}) error {
-		path, err := index.PathForContext(ctx)
-		if err != nil {
-			return err
+	walkFn := func(path string, fi os.FileInfo) error {
+		if fi.IsDir() {
+			return nil
+		}
+
+		if !strings.HasSuffix(path, ".geojson") {
+			return nil
 		}
 
 		f, err := feature.LoadWOFFeatureFromFile(path)
@@ -55,22 +53,14 @@ func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
 			return err
 		}
 
-		err = cb(f)
-
-		return err
+		return cb(f)
 	}
 
-	i, err := index.NewIndexer("directory", localCb)
-	if err != nil {
+	errorFn := walker.WithErrorCallback(func(path string, err error) error {
 		return err
-	}
+	})
 
-	err = i.IndexPath(d.dataPath)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return walker.Walk(d.dataPath, walkFn, errorFn)
 }
 
 const edtfDateLayout = "2006-01-02"
