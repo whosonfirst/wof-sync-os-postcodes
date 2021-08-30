@@ -16,6 +16,7 @@ import (
 	exportOptions "github.com/whosonfirst/go-whosonfirst-export/options"
 	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 
 	proxy "github.com/aaronland/go-artisanal-integers-proxy"
 	pool "github.com/aaronland/go-pool"
@@ -92,12 +93,8 @@ func main() {
 			return nil
 		}
 
-		spr, err := wofFeature.SPR()
-		if err != nil {
-			return err
-		}
-
-		if spr.Country() != "GB" {
+		country := whosonfirst.Country(wofFeature)
+		if country != "GB" {
 			log.Printf("Skipping non-GB postcode: %s (ID %s)", postcode, id)
 			return nil
 		}
