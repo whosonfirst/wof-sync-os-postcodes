@@ -30,6 +30,12 @@ I suggest using a 64GB machine with a ram disk. The ramdisk provides tolerable I
 
 `setup.sh` contains a script which performs much of the set up for you. It expects to be run in an empty, ephemeral VM, so if you're running on a machine you care about, please read the script carefully before executing.
 
+```shell
+curl https://raw.githubusercontent.com/whosonfirst/wof-sync-os-postcodes/master/setup.sh -o setup.sh
+chmod +x setup.sh
+./setup.sh
+```
+
 After executing, copy the ONS directory CSV into `/mnt/wof`. To bring up the PIP server, open tmux or your favourite screen-like app, and in one window execute:
 
 ```shell
