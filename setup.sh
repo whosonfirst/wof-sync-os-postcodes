@@ -2,7 +2,6 @@
 set -eo pipefail
 
 MOUNT_DIR="/mnt/wof"
-WOF_SYNC_OS_POSTCODES_VERSION="0.1.0"
 
 sudo mkdir -p "$MOUNT_DIR"
 sudo mount -t tmpfs -o size=90%,nr_inodes=0 wof "$MOUNT_DIR"
@@ -20,7 +19,9 @@ cd whosonfirst-data-postalcode-gb
 git config gc.auto 0
 cd ..
 
-curl -L "https://github.com/whosonfirst/wof-sync-os-postcodes/releases/download/v${WOF_SYNC_OS_POSTCODES_VERSION}/wof-sync-os-postcodes_${WOF_SYNC_OS_POSTCODES_VERSION}_linux_x86_64" -o wof-sync-os-postcodes
+# Grab the latest release
+DOWNLOAD_URL=$(curl -sL wofcurl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-postcodes/releases/latest" | jq -r '.assets[].browser_download_url' | grep linux_x86_64)
+curl -sL "${DOWNLOAD_URL}" -o wof-sync-os-postcodes
 chmod +x wof-sync-os-postcodes
 
 git clone https://github.com/whosonfirst/go-whosonfirst-pip-v2
