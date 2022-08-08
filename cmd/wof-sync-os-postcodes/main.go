@@ -2,21 +2,20 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
 	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
 	"github.com/whosonfirst/wof-sync-os-postcodes/postcodevalidator"
 	"github.com/whosonfirst/wof-sync-os-postcodes/wofdata"
 
 	exportOptions "github.com/whosonfirst/go-whosonfirst-export/options"
-	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
 
 	proxy "github.com/aaronland/go-artisanal-integers-proxy"
 	pool "github.com/aaronland/go-pool"
@@ -78,22 +77,38 @@ func main() {
 	var updatedCounter uint64
 	var newCounter uint64
 
-	cb := func(f geojson.Feature) error {
-		postcode := f.Name()
-		id := f.Id()
+	cb := func(f []byte) error {
+		postcode := ""
+		nameResult := gjson.GetBytes(f, "properties.wof:name")
+		if nameResult.Exists() {
+			postcode = nameResult.String()
+		}
+
+		if postcode == "" {
+			return errors.New("name not found on existing record")
+		}
+
+		id := ""
+		idResult := gjson.GetBytes(f, "id")
+		if idResult.Exists() {
+			id = idResult.String()
+		}
+
+		if id == "" {
+			return errors.New("id not found on existing record")
+		}
 
 		// Track which postcodes we've seen, so we can make new ones later on
 		seenPostcodesMutex.Lock()
 		seenPostcodes[postcode] = true
 		seenPostcodesMutex.Unlock()
 
-		wofFeature, ok := f.(*feature.WOFFeature)
-		if !ok {
-			log.Printf("Skipping non-WOF feature: %s (ID %s)", postcode, id)
-			return nil
+		country := ""
+		countryResult := gjson.GetBytes(f, "properties.wof:country")
+		if countryResult.Exists() {
+			country = countryResult.String()
 		}
 
-		country := whosonfirst.Country(wofFeature)
 		if country != "GB" {
 			log.Printf("Skipping non-GB postcode: %s (ID %s)", postcode, id)
 			return nil

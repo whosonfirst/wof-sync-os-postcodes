@@ -21,8 +21,6 @@ import (
 	"github.com/saracen/walker"
 	export "github.com/whosonfirst/go-whosonfirst-export"
 	"github.com/whosonfirst/go-whosonfirst-export/options"
-	geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	uri "github.com/whosonfirst/go-whosonfirst-uri"
 )
 
@@ -38,7 +36,7 @@ func NewWOFData(dataPath string, expOpts options.Options) *WOFData {
 }
 
 // Iterate fires the provided callback for every file in the WOFData path.
-func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
+func (d *WOFData) Iterate(cb func([]byte) error) error {
 	walkFn := func(path string, fi os.FileInfo) error {
 		if fi.IsDir() {
 			return nil
@@ -48,7 +46,7 @@ func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
 			return nil
 		}
 
-		f, err := feature.LoadWOFFeatureFromFile(path)
+		f, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -66,64 +64,74 @@ func (d *WOFData) Iterate(cb func(geojson.Feature) error) error {
 const edtfDateLayout = "2006-01-02"
 
 // DeprecateFeature deprecates the provided feature and writes it to disk.
-func (d *WOFData) DeprecateFeature(f geojson.Feature, dryRun bool) (changed bool, err error) {
-	bytes := f.Bytes()
-	json := string(bytes)
-	originalJSON := string(bytes)
+func (d *WOFData) DeprecateFeature(f []byte, dryRun bool) (changed bool, err error) {
+	originalBytes := make([]byte, len(f))
+	copy(originalBytes, f)
 
 	deprecated := edtf.UNSPECIFIED
-	result := gjson.Get(json, "properties.edtf:deprecated")
+	result := gjson.GetBytes(f, "properties.edtf:deprecated")
 	if result.Exists() {
 		deprecated = result.String()
 	}
 
+	idResult := gjson.GetBytes(f, "properties.id")
+	var id int64 = -1
+	if idResult.Exists() {
+		id = idResult.Int()
+	}
+
 	if deprecated != edtf.UNSPECIFIED {
-		log.Printf("ID %s already deprecated, skipping", f.Id())
+		log.Printf("ID %d already deprecated, skipping", id)
 		return
 	}
 
 	now := time.Now()
 
-	json, err = sjson.Set(json, "properties.edtf:deprecated", now.Format(edtfDateLayout))
+	f, err = sjson.SetBytes(f, "properties.edtf:deprecated", now.Format(edtfDateLayout))
 	if err != nil {
 		return
 	}
 
-	json, err = sjson.Set(json, "properties.mz:is_current", 0)
+	f, err = sjson.SetBytes(f, "properties.mz:is_current", 0)
 	if err != nil {
 		return
 	}
 
 	if !dryRun {
-		changed, err = d.exportFeature(json, originalJSON)
+		changed, err = d.exportFeature(f, originalBytes)
 	}
 
 	return
 }
 
 // CeaseFeature ceases the provided feature and writes it to disk.
-func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (changed bool, err error) {
-	bytes := f.Bytes()
-	json := string(bytes)
-	originalJSON := string(bytes)
+func (d *WOFData) CeaseFeature(json []byte, date time.Time, dryRun bool) (changed bool, err error) {
+	originalJSON := make([]byte, len(json))
+	copy(originalJSON, json)
 
 	cessation := edtf.UNSPECIFIED
-	result := gjson.Get(json, "properties.edtf:cessation")
+	result := gjson.GetBytes(json, "properties.edtf:cessation")
 	if result.Exists() {
 		cessation = result.String()
 	}
 
+	idResult := gjson.GetBytes(json, "properties.id")
+	var id int64 = -1
+	if idResult.Exists() {
+		id = idResult.Int()
+	}
+
 	if cessation != edtf.UNSPECIFIED {
-		log.Printf("ID %s already ceased, skipping", f.Id())
+		log.Printf("ID %d already ceased, skipping", id)
 		return
 	}
 
-	json, err = sjson.Set(json, "properties.edtf:cessation", date.Format(edtfDateLayout))
+	json, err = sjson.SetBytes(json, "properties.edtf:cessation", date.Format(edtfDateLayout))
 	if err != nil {
 		return
 	}
 
-	json, err = sjson.Set(json, "properties.mz:is_current", 0)
+	json, err = sjson.SetBytes(json, "properties.mz:is_current", 0)
 	if err != nil {
 		return
 	}
@@ -135,10 +143,9 @@ func (d *WOFData) CeaseFeature(f geojson.Feature, date time.Time, dryRun bool) (
 	return
 }
 
-func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) (changed bool, err error) {
-	bytes := f.Bytes()
-	json := string(bytes)
-	originalJSON := string(bytes)
+func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) (changed bool, err error) {
+	originalJSON := make([]byte, len(json))
+	copy(originalJSON, json)
 
 	json, err = setDates(json, pcData)
 	if err != nil {
@@ -163,61 +170,61 @@ func (d *WOFData) UpdateFeature(f geojson.Feature, pcData *onsdb.PostcodeData, p
 }
 
 func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) error {
-	json := "{}"
+	json := []byte("{}")
 
-	json, err := sjson.Set(json, "type", "Feature")
+	json, err := sjson.SetBytes(json, "type", "Feature")
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:name", pc.Postcode)
+	json, err = sjson.SetBytes(json, "properties.wof:name", pc.Postcode)
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:placetype", "postalcode")
+	json, err = sjson.SetBytes(json, "properties.wof:placetype", "postalcode")
 	if err != nil {
 		return err
 	}
 
 	emptyList := make([]*string, 0)
 
-	json, err = sjson.Set(json, "properties.wof:superseded_by", emptyList)
+	json, err = sjson.SetBytes(json, "properties.wof:superseded_by", emptyList)
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:supersedes", emptyList)
+	json, err = sjson.SetBytes(json, "properties.wof:supersedes", emptyList)
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:breaches", emptyList)
+	json, err = sjson.SetBytes(json, "properties.wof:breaches", emptyList)
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:tags", emptyList)
+	json, err = sjson.SetBytes(json, "properties.wof:tags", emptyList)
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:repo", "whosonfirst-data-postalcode-gb")
+	json, err = sjson.SetBytes(json, "properties.wof:repo", "whosonfirst-data-postalcode-gb")
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.iso:country", "GB")
+	json, err = sjson.SetBytes(json, "properties.iso:country", "GB")
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:country", "GB")
+	json, err = sjson.SetBytes(json, "properties.wof:country", "GB")
 	if err != nil {
 		return err
 	}
 
-	json, err = sjson.Set(json, "properties.mz:hierarchy_label", 1)
+	json, err = sjson.SetBytes(json, "properties.mz:hierarchy_label", 1)
 	if err != nil {
 		return err
 	}
@@ -237,18 +244,15 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) e
 		return err
 	}
 
-	_, err = d.exportFeature(json, "")
+	_, err = d.exportFeature(json, []byte{})
 	return err
 }
 
-func (d *WOFData) exportFeature(json string, originalJSON string) (changed bool, err error) {
-	jsonBytes := []byte(json)
-	originalJSONBytes := []byte(originalJSON)
-
+func (d *WOFData) exportFeature(updatedBytes []byte, originalBytes []byte) (changed bool, err error) {
 	var outputBuf bytes.Buffer
 	writer := bufio.NewWriter(&outputBuf)
 
-	changed, err = export.ExportChanged(jsonBytes, originalJSONBytes, d.exportOptions, writer)
+	changed, err = export.ExportChanged(updatedBytes, originalBytes, d.exportOptions, writer)
 	if err != nil {
 		return
 	}
@@ -262,9 +266,7 @@ func (d *WOFData) exportFeature(json string, originalJSON string) (changed bool,
 		return
 	}
 
-	jsonBytes = outputBuf.Bytes()
-
-	idResult := gjson.GetBytes(jsonBytes, "id")
+	idResult := gjson.GetBytes(updatedBytes, "id")
 	if !idResult.Exists() {
 		err = errors.New("missing `id` field in JSON")
 		return
@@ -296,21 +298,21 @@ func (d *WOFData) exportFeature(json string, originalJSON string) (changed bool,
 		}
 	}()
 
-	_, err = f.Write(jsonBytes)
+	_, err = f.Write(updatedBytes)
 	return
 }
 
-func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
+func setDates(json []byte, pc *onsdb.PostcodeData) ([]byte, error) {
 	inception := convertStringToEDTF(pc.Inception)
-	json, err := sjson.Set(json, "properties.edtf:inception", inception)
+	json, err := sjson.SetBytes(json, "properties.edtf:inception", inception)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	cessation := convertStringToEDTF(pc.Cessation)
-	json, err = sjson.Set(json, "properties.edtf:cessation", cessation)
+	json, err = sjson.SetBytes(json, "properties.edtf:cessation", cessation)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	isCurrent := 1
@@ -318,15 +320,15 @@ func setDates(json string, pc *onsdb.PostcodeData) (string, error) {
 		isCurrent = 0
 	}
 
-	json, err = sjson.Set(json, "properties.mz:is_current", isCurrent)
+	json, err = sjson.SetBytes(json, "properties.mz:is_current", isCurrent)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	return json, nil
 }
 
-func setGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) (string, error) {
+func setGeometry(json []byte, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) ([]byte, error) {
 	latitude := pc.Latitude
 	longitude := pc.Longitude
 
@@ -349,12 +351,12 @@ func setGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) 
 	// If we have invalid geometry
 	if latitude == "0.0" && longitude == "0.0" {
 		// If there's no geometry set the source to unknown and clear the hierarchy
-		json, err = sjson.Set(json, "properties.src:geom", "unknown")
+		json, err = sjson.SetBytes(json, "properties.src:geom", "unknown")
 		if err != nil {
 			return json, err
 		}
 
-		json, err = sjson.Delete(json, "properties.wof:hierarchy")
+		json, err = sjson.DeleteBytes(json, "properties.wof:hierarchy")
 		if err != nil {
 			return json, err
 		}
@@ -363,7 +365,7 @@ func setGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) 
 	}
 
 	// If we've updated the geometry, set the source to OS
-	json, err = sjson.Set(json, "properties.src:geom", "os")
+	json, err = sjson.SetBytes(json, "properties.src:geom", "os")
 	if err != nil {
 		return json, err
 	}
@@ -378,100 +380,103 @@ func setGeometry(json string, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) 
 	return json, nil
 }
 
-func setPointGeometry(json string, latitude string, longitude string) (string, error) {
-	json, err := sjson.Set(json, "geometry.type", "Point")
+func setPointGeometry(json []byte, latitude string, longitude string) ([]byte, error) {
+	latitudeBytes := []byte(latitude)
+	longitudeBytes := []byte(longitude)
+
+	json, err := sjson.SetBytes(json, "geometry.type", "Point")
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.SetRaw(json, "geometry.coordinates.0", longitude)
+	json, err = sjson.SetRawBytes(json, "geometry.coordinates.0", longitudeBytes)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.SetRaw(json, "geometry.coordinates.1", latitude)
+	json, err = sjson.SetRawBytes(json, "geometry.coordinates.1", latitudeBytes)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.SetRaw(json, "bbox.0", longitude)
+	json, err = sjson.SetRawBytes(json, "bbox.0", longitudeBytes)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.SetRaw(json, "bbox.1", latitude)
+	json, err = sjson.SetRawBytes(json, "bbox.1", latitudeBytes)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.SetRaw(json, "bbox.2", longitude)
+	json, err = sjson.SetRawBytes(json, "bbox.2", longitudeBytes)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.SetRaw(json, "bbox.3", latitude)
+	json, err = sjson.SetRawBytes(json, "bbox.3", latitudeBytes)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	return json, nil
 }
 
-func setOSProperties(json string, pc *onsdb.PostcodeData) (string, error) {
+func setOSProperties(json []byte, pc *onsdb.PostcodeData) ([]byte, error) {
 	// Drop the NHS fields, they're not very useful and we don't have NHS geography
 	// anywhere else in WOF
-	json, err := sjson.Delete(json, "properties.os:nhs_ha_code")
+	json, err := sjson.DeleteBytes(json, "properties.os:nhs_ha_code")
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Delete(json, "properties.os:nhs_regional_ha_code")
+	json, err = sjson.DeleteBytes(json, "properties.os:nhs_regional_ha_code")
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	// Delete this key because 'distict' is mispelt
-	json, err = sjson.Delete(json, "properties.os:admin_distict_code")
+	json, err = sjson.DeleteBytes(json, "properties.os:admin_distict_code")
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	// Drop the ward code, because these are part of electoral geography, which
 	// isn't referenced anywhere else in WOF.
-	json, err = sjson.Delete(json, "properties.os:admin_ward_code")
+	json, err = sjson.DeleteBytes(json, "properties.os:admin_ward_code")
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	// Drop os:admin_county_code, because we're going to rename it later on.
-	json, err = sjson.Delete(json, "properties.os:admin_county_code")
+	json, err = sjson.DeleteBytes(json, "properties.os:admin_county_code")
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Set(json, "properties.os:country_code", pc.CountryCode)
+	json, err = sjson.SetBytes(json, "properties.os:country_code", pc.CountryCode)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Set(json, "properties.os:region_code", pc.RegionCode)
+	json, err = sjson.SetBytes(json, "properties.os:region_code", pc.RegionCode)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Set(json, "properties.os:district_code", pc.DistrictCode)
+	json, err = sjson.SetBytes(json, "properties.os:district_code", pc.DistrictCode)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Set(json, "properties.os:county_code", pc.CountyCode)
+	json, err = sjson.SetBytes(json, "properties.os:county_code", pc.CountyCode)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Set(json, "properties.os:positional_quality_indicator", pc.PositionalQuality)
+	json, err = sjson.SetBytes(json, "properties.os:positional_quality_indicator", pc.PositionalQuality)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	return json, nil
@@ -490,15 +495,15 @@ func convertStringToEDTF(s string) string {
 	return t.Format(edtfDateLayout)
 }
 
-func setHierarchy(json string, pip *pipclient.PIPClient, pc *onsdb.PostcodeData) (string, error) {
+func setHierarchy(json []byte, pip *pipclient.PIPClient, pc *onsdb.PostcodeData) ([]byte, error) {
 	hierarchy, err := buildHierarchy(pip, pc.Latitude, pc.Longitude)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
-	json, err = sjson.Set(json, "properties.wof:hierarchy.0", hierarchy)
+	json, err = sjson.SetBytes(json, "properties.wof:hierarchy.0", hierarchy)
 	if err != nil {
-		return "", err
+		return json, err
 	}
 
 	return json, nil
