@@ -81,7 +81,7 @@ func (client *PIPClient) requestBodyReader(latitude string, longitude string) (i
 		return nil, err
 	}
 
-	reqJSON, err = sjson.SetBytes(reqJSON, "is_current", []int{1})
+	reqJSON, err = sjson.SetBytes(reqJSON, "is_current", []int{1, -1})
 	if err != nil {
 		return nil, err
 	}
