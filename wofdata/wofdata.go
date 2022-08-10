@@ -266,7 +266,9 @@ func (d *WOFData) exportFeature(updatedBytes []byte, originalBytes []byte) (chan
 		return
 	}
 
-	idResult := gjson.GetBytes(updatedBytes, "id")
+	exportedBytes := outputBuf.Bytes()
+
+	idResult := gjson.GetBytes(exportedBytes, "id")
 	if !idResult.Exists() {
 		err = errors.New("missing `id` field in JSON")
 		return
@@ -298,7 +300,7 @@ func (d *WOFData) exportFeature(updatedBytes []byte, originalBytes []byte) (chan
 		}
 	}()
 
-	_, err = f.Write(updatedBytes)
+	_, err = f.Write(exportedBytes)
 	return
 }
 
