@@ -343,6 +343,7 @@ func setGeometry(json []byte, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) 
 	// Postcodes without geometry in the ONSDB are set to 99.999999
 	if latitude == "99.999999" {
 		latitude = "0.0"
+		longitude = "0.0"
 	}
 
 	json, err := setPointGeometry(json, latitude, longitude)
