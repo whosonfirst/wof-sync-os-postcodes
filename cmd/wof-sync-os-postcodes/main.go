@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -26,7 +27,7 @@ func main() {
 	var onsCSVPath = flag.String("ons-csv-path", "", "The path to the ONS postcodes CSV")
 	var onsDate = flag.String("ons-date", "", "The date of the ONS postalcodes CSV")
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
-	var pipHost = flag.String("pip-host", "http://localhost:8080/", "The host of the PIP server")
+	var pipURI = flag.String("pip-uri", "http://localhost:8080/api/point-in-polygon", "The host of the PIP server")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
 	flag.Parse()
@@ -61,12 +62,12 @@ func main() {
 
 	// Use separate pipclients for creating and updating features, so we can
 	// enable/disable them independently.
-	createPip := pipclient.NewPIPClient(*pipHost)
+	createPip := pipclient.NewPIPClient(*pipURI)
 	var updatePip *pipclient.PIPClient
 	if *noUpdateHierarchy {
 		log.Print("Updating hierarchy for existing features is disabled")
 	} else {
-		updatePip = pipclient.NewPIPClient(*pipHost)
+		updatePip = pipclient.NewPIPClient(*pipURI)
 	}
 
 	seenPostcodes := make(map[string]bool)
@@ -95,7 +96,7 @@ func main() {
 		}
 
 		if id == "" {
-			return errors.New("id not found on existing record")
+			return fmt.Errorf("id not found on existing record with name %s", postcode)
 		}
 
 		// Track which postcodes we've seen, so we can make new ones later on
@@ -166,7 +167,7 @@ func main() {
 
 	err = wof.Iterate(cb)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Iteration failed: %s", err)
 	}
 
 	log.Printf("Seen %d postcodes, now checking for new postcodes", len(seenPostcodes))

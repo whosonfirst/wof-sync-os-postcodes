@@ -1,24 +1,20 @@
 package pipclient
 
 import (
-	"encoding/json"
+	"bytes"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"runtime"
 	"time"
 
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
+	"github.com/tidwall/sjson"
 )
 
 type PIPClient struct {
 	url  string
 	http *http.Client
-}
-
-type PlacesResponse struct {
-	Places []*feature.WOFStandardPlacesResult `json:"places"`
 }
 
 func NewPIPClient(u string) *PIPClient {
@@ -41,16 +37,18 @@ func NewPIPClient(u string) *PIPClient {
 	return &PIPClient{http: client, url: u}
 }
 
-func (client *PIPClient) PointInPolygon(latitude string, longitude string) (*PlacesResponse, error) {
-	u, err := client.requestURL(latitude, longitude)
+func (client *PIPClient) PointInPolygon(latitude string, longitude string) ([]byte, error) {
+	reqBody, err := client.requestBodyReader(latitude, longitude)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("GET", u.String(), nil)
+	req, err := http.NewRequest("POST", client.url, reqBody)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("content-type", "application/json")
 
 	res, err := client.http.Do(req)
 	if err != nil {
@@ -64,29 +62,29 @@ func (client *PIPClient) PointInPolygon(latitude string, longitude string) (*Pla
 		return nil, err
 	}
 
-	places := PlacesResponse{}
-	err = json.Unmarshal(body, &places)
-	if err != nil {
-		return nil, err
-	}
-
-	return &places, nil
+	return body, nil
 }
 
-func (client *PIPClient) requestURL(latitude string, longitude string) (*url.URL, error) {
-	u, err := url.Parse(client.url)
+func (client *PIPClient) requestBodyReader(latitude string, longitude string) (io.Reader, error) {
+	reqJSON := []byte{}
+
+	latitudeBytes := []byte(latitude)
+	longitudeBytes := []byte(longitude)
+
+	reqJSON, err := sjson.SetRawBytes(reqJSON, "latitude", latitudeBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	u.Path = "/query"
+	reqJSON, err = sjson.SetRawBytes(reqJSON, "longitude", longitudeBytes)
+	if err != nil {
+		return nil, err
+	}
 
-	q := u.Query()
-	q.Set("latitude", latitude)
-	q.Set("longitude", longitude)
-	q.Set("is_current", "-1,1")
+	reqJSON, err = sjson.SetBytes(reqJSON, "is_current", []int{1})
+	if err != nil {
+		return nil, err
+	}
 
-	u.RawQuery = q.Encode()
-
-	return u, nil
+	return bytes.NewReader(reqJSON), nil
 }

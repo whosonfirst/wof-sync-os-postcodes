@@ -74,7 +74,7 @@ func (d *WOFData) DeprecateFeature(f []byte, dryRun bool) (changed bool, err err
 		deprecated = result.String()
 	}
 
-	idResult := gjson.GetBytes(f, "properties.id")
+	idResult := gjson.GetBytes(f, "properties.wof:id")
 	var id int64 = -1
 	if idResult.Exists() {
 		id = idResult.Int()
@@ -115,7 +115,7 @@ func (d *WOFData) CeaseFeature(json []byte, date time.Time, dryRun bool) (change
 		cessation = result.String()
 	}
 
-	idResult := gjson.GetBytes(json, "properties.id")
+	idResult := gjson.GetBytes(json, "properties.wof:id")
 	var id int64 = -1
 	if idResult.Exists() {
 		id = idResult.Int()
@@ -512,16 +512,26 @@ func setHierarchy(json []byte, pip *pipclient.PIPClient, pc *onsdb.PostcodeData)
 func buildHierarchy(pip *pipclient.PIPClient, latitude string, longitude string) (map[string]int64, error) {
 	h := make(map[string]int64)
 
-	places, err := pip.PointInPolygon(latitude, longitude)
+	response, err := pip.PointInPolygon(latitude, longitude)
 	if err != nil {
 		return h, err
 	}
 
-	for _, place := range places.Places {
-		placetype := place.WOFPlacetype
-		key := fmt.Sprintf("%s_id", placetype)
-		value := place.WOFId
-		h[key] = value
+	placesResult := gjson.GetBytes(response, "places")
+	if !placesResult.Exists() {
+		return h, fmt.Errorf("PIP JSON response did not contain places key for latitude, longitude %s, %s: %s", latitude, longitude, response)
+	}
+
+	for _, placeResult := range placesResult.Array() {
+		placetypeResult := placeResult.Get("wof:placetype")
+		idResult := placeResult.Get("wof:id")
+
+		if placetypeResult.Exists() && idResult.Exists() {
+			placetype := placetypeResult.String()
+			id := idResult.Int()
+			key := fmt.Sprintf("%s_id", placetype)
+			h[key] = id
+		}
 	}
 
 	return h, nil
