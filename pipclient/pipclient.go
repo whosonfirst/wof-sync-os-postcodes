@@ -3,7 +3,6 @@ package pipclient
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"runtime"
@@ -57,7 +56,7 @@ func (client *PIPClient) PointInPolygon(latitude string, longitude string) ([]by
 
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
