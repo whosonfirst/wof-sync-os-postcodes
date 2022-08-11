@@ -6,7 +6,7 @@ It should be rerun whenever there's a new release of the Postcode Directory, whi
 
 It needs a directory containing [`whosonfirst-data-postalcode-gb`](https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb), and the most recent ONS Postcode Directory as a single CSV file.
 
-It also needs a running [PIP server](https://github.com/whosonfirst/go-whosonfirst-pip-v2) containing the UK admin data, for building the Who’s on First hierarchy from coordinates provided in the ONS data. It defaults to finding this at `http://localhost:8080`, but can be set with a flag.
+It also needs a running [PIP HTTP server](https://github.com/whosonfirst/go-whosonfirst-spatial-www) containing the UK admin data, for building the Who’s on First hierarchy from coordinates provided in the ONS data. It defaults to finding this at `http://localhost:8080/api/point-in-polygon`, but can be set with a flag.
 
 It will ignore the coordinates from Northern Irish postcodes (starting with BT) as these are under more restrictive licensing conditions than the rest of the UK, so aren't suitable for inclusion in Who’s on First. It will use the inception/cessation data, however.
 
@@ -40,7 +40,7 @@ After executing, copy the ONS directory CSV into `/mnt/wof`. To bring up the PIP
 
 ```shell
 cd /mnt/wof
-./wof-pip-server whosonfirst-data-admin-gb/data/
+./wof-spatial-server -spatial-database-uri 'rtree:///?strict=false' /mnt/wof/whosonfirst-data-admin-gb
 ```
 
 And in another window perform the sync with something like:
@@ -68,5 +68,6 @@ Some tips:
 
 - https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb
 - https://github.com/whosonfirst-data/whosonfirst-data-admin-gb
-- https://github.com/whosonfirst/go-whosonfirst-pip-v2
+- https://github.com/whosonfirst/go-whosonfirst-spatial-www
+- https://github.com/whosonfirst/go-whosonfirst-spatial-pip
 - http://geoportal.statistics.gov.uk

@@ -7,6 +7,10 @@ sudo mkdir -p "$MOUNT_DIR"
 sudo mount -t tmpfs -o size=90%,nr_inodes=0 wof "$MOUNT_DIR"
 sudo chown $(whoami):$(whoami) "$MOUNT_DIR"
 
+# Install Golang PPA so we have latest
+sudo add-apt-repository -y ppa:longsleep/golang-backports
+sudo update
+
 # Add stuff for building, and other useful utils
 sudo apt install -y build-essential git golang tmux unzip jq
 
@@ -24,8 +28,8 @@ DOWNLOAD_URL=$(curl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-po
 curl -sL "${DOWNLOAD_URL}" -o wof-sync-os-postcodes
 chmod +x wof-sync-os-postcodes
 
-git clone https://github.com/whosonfirst/go-whosonfirst-pip-v2
-cd go-whosonfirst-pip-v2
-make tools
-cp bin/wof-pip-server ..
+git clone https://github.com/whosonfirst/go-whosonfirst-spatial-www
+cd go-whosonfirst-spatial-www
+make cli
+cp bin/server ../wof-spatial-server
 cd ..
