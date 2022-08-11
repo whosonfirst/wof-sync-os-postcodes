@@ -97,11 +97,8 @@ func (d *WOFData) DeprecateFeature(f []byte, dryRun bool) (changed bool, err err
 		return
 	}
 
-	if !dryRun {
-		changed, err = d.exportFeature(f, originalBytes)
-	}
+	return d.exportFeature(f, originalBytes, dryRun)
 
-	return
 }
 
 // CeaseFeature ceases the provided feature and writes it to disk.
@@ -136,11 +133,7 @@ func (d *WOFData) CeaseFeature(json []byte, date time.Time, dryRun bool) (change
 		return
 	}
 
-	if !dryRun {
-		changed, err = d.exportFeature(json, originalJSON)
-	}
-
-	return
+	return d.exportFeature(json, originalJSON, dryRun)
 }
 
 func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) (changed bool, err error) {
@@ -162,14 +155,11 @@ func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, pip *pi
 		return
 	}
 
-	if !dryRun {
-		changed, err = d.exportFeature(json, originalJSON)
-	}
+	return d.exportFeature(json, originalJSON, dryRun)
 
-	return
 }
 
-func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) error {
+func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) error {
 	json := []byte("{}")
 
 	json, err := sjson.SetBytes(json, "type", "Feature")
@@ -244,11 +234,11 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient) e
 		return err
 	}
 
-	_, err = d.exportFeature(json, []byte{})
+	_, err = d.exportFeature(json, []byte{}, dryRun)
 	return err
 }
 
-func (d *WOFData) exportFeature(updatedBytes []byte, originalBytes []byte) (changed bool, err error) {
+func (d *WOFData) exportFeature(updatedBytes []byte, originalBytes []byte, dryRun bool) (changed bool, err error) {
 	var outputBuf bytes.Buffer
 	writer := bufio.NewWriter(&outputBuf)
 
@@ -257,7 +247,7 @@ func (d *WOFData) exportFeature(updatedBytes []byte, originalBytes []byte) (chan
 		return
 	}
 
-	if !changed {
+	if !changed || dryRun {
 		return
 	}
 

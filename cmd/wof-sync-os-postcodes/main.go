@@ -185,10 +185,7 @@ func main() {
 
 		log.Printf("Creating new postcode: %s", pc.Postcode)
 		atomic.AddUint64(&newCounter, 1)
-		if dryRun {
-			return nil
-		}
-		return wof.NewFeature(pc, createPip)
+		return wof.NewFeature(pc, createPip, dryRun)
 	}
 
 	err = db.Iterate(onsCB)
