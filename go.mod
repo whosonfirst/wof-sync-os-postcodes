@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/aaronland/go-artisanal-integers-proxy v0.2.6
 	github.com/aaronland/go-pool v1.0.0
+	github.com/gammazero/workerpool v1.1.2
 	github.com/saracen/walker v0.1.3
 	github.com/sfomuseum/go-edtf v1.1.1
 	github.com/smartystreets/scanners v1.0.4
@@ -27,6 +28,7 @@ require (
 	github.com/aaronland/go-uid-artisanal v0.0.1 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
+	github.com/gammazero/deque v0.1.0 // indirect
 	github.com/paulmach/orb v0.7.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect

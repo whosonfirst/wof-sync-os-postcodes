@@ -8,12 +8,14 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/gammazero/workerpool"
 	"github.com/tidwall/sjson"
 )
 
 type PIPClient struct {
 	url  string
 	http *http.Client
+	wp   *workerpool.WorkerPool
 }
 
 func NewPIPClient(u string) *PIPClient {
@@ -25,7 +27,8 @@ func NewPIPClient(u string) *PIPClient {
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		MaxIdleConnsPerHost:   maxConns,
+		ForceAttemptHTTP2:     true,
+		MaxConnsPerHost:       maxConns,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -33,35 +36,51 @@ func NewPIPClient(u string) *PIPClient {
 	}
 
 	client := &http.Client{Transport: tr}
-	return &PIPClient{http: client, url: u}
+
+	wp := workerpool.New(maxConns)
+
+	return &PIPClient{http: client, url: u, wp: wp}
+}
+
+type result struct {
+	bytes []byte
+	err   error
 }
 
 func (client *PIPClient) PointInPolygon(latitude string, longitude string) ([]byte, error) {
-	reqBody, err := client.requestBodyReader(latitude, longitude)
-	if err != nil {
-		return nil, err
-	}
+	c := make(chan result)
 
-	req, err := http.NewRequest("POST", client.url, reqBody)
-	if err != nil {
-		return nil, err
-	}
+	client.wp.Submit(func() {
+		reqBody, err := client.requestBodyReader(latitude, longitude)
+		if err != nil {
+			c <- result{nil, err}
+			return
+		}
 
-	req.Header.Add("content-type", "application/json")
+		req, err := http.NewRequest("POST", client.url, reqBody)
+		if err != nil {
+			c <- result{nil, err}
+			return
+		}
 
-	res, err := client.http.Do(req)
-	if err != nil {
-		return nil, err
-	}
+		req.Header.Add("content-type", "application/json")
 
-	defer res.Body.Close()
+		res, err := client.http.Do(req)
+		if err != nil {
+			c <- result{nil, err}
+			return
+		}
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
+		defer res.Body.Close()
 
-	return body, nil
+		body, err := io.ReadAll(res.Body)
+		c <- result{body, err}
+
+	})
+
+	result := <-c
+
+	return result.bytes, result.err
 }
 
 func (client *PIPClient) requestBodyReader(latitude string, longitude string) (io.Reader, error) {
