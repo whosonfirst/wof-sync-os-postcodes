@@ -198,7 +198,7 @@ func main() {
 	updated := atomic.LoadUint64(&updatedCounter)
 	new := atomic.LoadUint64(&newCounter)
 
-	log.Printf("Stats: %d ceased, %d deprecated, %d updated, %d new", ceased, deprecated, updated, new)
+	log.Printf("Stats: %d not found and ceased, %d found invalid then deprecated, %d updated, %d new", ceased, deprecated, updated, new)
 }
 
 func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
