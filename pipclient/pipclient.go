@@ -27,10 +27,6 @@ func NewPIPClient(u string) *PIPClient {
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxConnsPerHost:       maxConns,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
@@ -63,6 +59,7 @@ func (client *PIPClient) PointInPolygon(latitude string, longitude string) ([]by
 			return
 		}
 
+		req.Close = true
 		req.Header.Add("content-type", "application/json")
 
 		res, err := client.http.Do(req)
