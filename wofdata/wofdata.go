@@ -19,17 +19,16 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/saracen/walker"
-	export "github.com/whosonfirst/go-whosonfirst-export"
-	"github.com/whosonfirst/go-whosonfirst-export/options"
+	export "github.com/whosonfirst/go-whosonfirst-export/v2"
 	uri "github.com/whosonfirst/go-whosonfirst-uri"
 )
 
 type WOFData struct {
 	dataPath      string
-	exportOptions options.Options
+	exportOptions *export.Options
 }
 
-func NewWOFData(dataPath string, expOpts options.Options) *WOFData {
+func NewWOFData(dataPath string, expOpts *export.Options) *WOFData {
 	data := &WOFData{dataPath: dataPath, exportOptions: expOpts}
 
 	return data

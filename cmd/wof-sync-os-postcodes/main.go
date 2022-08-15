@@ -16,11 +16,11 @@ import (
 	"github.com/whosonfirst/wof-sync-os-postcodes/postcodevalidator"
 	"github.com/whosonfirst/wof-sync-os-postcodes/wofdata"
 
-	exportOptions "github.com/whosonfirst/go-whosonfirst-export/options"
+	export "github.com/whosonfirst/go-whosonfirst-export/v2"
 
-	proxy "github.com/aaronland/go-artisanal-integers-proxy"
-	pool "github.com/aaronland/go-pool"
-	"github.com/whosonfirst/go-whosonfirst-id-proxy/provider"
+	_ "github.com/aaronland/go-uid-proxy"
+	_ "github.com/aaronland/go-uid-whosonfirst"
+	id "github.com/whosonfirst/go-whosonfirst-id"
 )
 
 func main() {
@@ -215,27 +215,10 @@ func shouldCreateNewPostcode(pc *onsdb.PostcodeData) bool {
 	return true
 }
 
-func createExportOptions(ctx context.Context) (exportOptions.Options, error) {
-	pl, err := pool.NewPool(ctx, "memory://")
-	if err != nil {
-		return nil, err
-	}
+func createExportOptions(ctx context.Context) (*export.Options, error) {
+	uri := "proxy:///?provider=whosonfirst://&minimum=100&pool=memory%3A%2F%2F"
+	cl, _ := id.NewProviderWithURI(ctx, uri)
 
-	svcArgs := proxy.ProxyServiceArgs{
-		BrooklynIntegers: true,
-		MinCount:         100,
-	}
-
-	svc, err := proxy.NewProxyServiceWithPool(pl, svcArgs)
-	if err != nil {
-		return nil, err
-	}
-
-	pr, err := provider.NewProxyServiceProvider(svc)
-	if err != nil {
-		return nil, err
-	}
-
-	opts, err := exportOptions.NewDefaultOptionsWithProvider(pr)
+	opts, err := export.NewDefaultOptionsWithProvider(ctx, cl)
 	return opts, err
 }
