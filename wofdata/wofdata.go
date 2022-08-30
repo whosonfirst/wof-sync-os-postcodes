@@ -3,8 +3,8 @@ package wofdata
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -488,45 +488,7 @@ func convertStringToEDTF(s string) string {
 }
 
 func setHierarchy(json []byte, pip *pipclient.PIPClient, pc *onsdb.PostcodeData) ([]byte, error) {
-	hierarchy, err := buildHierarchy(pip, pc.Latitude, pc.Longitude)
-	if err != nil {
-		return json, err
-	}
-
-	json, err = sjson.SetBytes(json, "properties.wof:hierarchy.0", hierarchy)
-	if err != nil {
-		return json, err
-	}
-
-	return json, nil
-}
-
-func buildHierarchy(pip *pipclient.PIPClient, latitude string, longitude string) (map[string]int64, error) {
-	h := make(map[string]int64)
-
-	response, err := pip.PointInPolygon(latitude, longitude)
-	if err != nil {
-		return h, err
-	}
-
-	placesResult := gjson.GetBytes(response, "places")
-	if !placesResult.Exists() {
-		return h, fmt.Errorf("PIP JSON response did not contain places key for latitude, longitude %s, %s: %s", latitude, longitude, response)
-	}
-
-	for _, placeResult := range placesResult.Array() {
-		placetypeResult := placeResult.Get("wof:placetype")
-		idResult := placeResult.Get("wof:id")
-
-		if placetypeResult.Exists() && idResult.Exists() {
-			placetype := placetypeResult.String()
-			id := idResult.Int()
-			key := fmt.Sprintf("%s_id", placetype)
-			h[key] = id
-		}
-	}
-
-	return h, nil
+	return pip.UpdateHierarchy(context.Background(), json)
 }
 
 // Don't set geometry for BT postcodes (Northern Ireland), because the

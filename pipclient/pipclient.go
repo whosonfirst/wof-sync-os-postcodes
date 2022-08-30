@@ -1,105 +1,69 @@
 package pipclient
 
 import (
-	"bytes"
-	"io"
-	"net"
-	"net/http"
-	"runtime"
-	"time"
+	"context"
+	"os"
+	"strings"
 
-	"github.com/gammazero/workerpool"
-	"github.com/tidwall/sjson"
+	"github.com/saracen/walker"
+	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
+	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
+	"github.com/whosonfirst/go-whosonfirst-spatial/database"
+	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 )
 
 type PIPClient struct {
-	url  string
-	http *http.Client
-	wp   *workerpool.WorkerPool
+	database database.SpatialDatabase
+	resolver *hierarchy.PointInPolygonHierarchyResolver
 }
 
-func NewPIPClient(u string) *PIPClient {
-	maxConns := runtime.NumCPU()
-
-	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+func NewPIPClient(ctx context.Context) (*PIPClient, error) {
+	url := "rtree:///?strict=false"
+	db, err := database.NewSpatialDatabase(ctx, url)
+	if err != nil {
+		return nil, err
 	}
 
-	client := &http.Client{Transport: tr}
+	resolver, err := hierarchy.NewPointInPolygonHierarchyResolver(ctx, db, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	wp := workerpool.New(maxConns)
-
-	return &PIPClient{http: client, url: u, wp: wp}
+	return &PIPClient{database: db, resolver: resolver}, nil
 }
 
-type result struct {
-	bytes []byte
-	err   error
-}
-
-func (client *PIPClient) PointInPolygon(latitude string, longitude string) ([]byte, error) {
-	c := make(chan result)
-
-	client.wp.Submit(func() {
-		reqBody, err := client.requestBodyReader(latitude, longitude)
-		if err != nil {
-			c <- result{nil, err}
-			return
+func (client *PIPClient) BuildDatabase(ctx context.Context, path string) error {
+	walkFn := func(path string, fi os.FileInfo) error {
+		if fi.IsDir() {
+			return nil
 		}
 
-		req, err := http.NewRequest("POST", client.url, reqBody)
-		if err != nil {
-			c <- result{nil, err}
-			return
+		if !strings.HasSuffix(path, ".geojson") {
+			return nil
 		}
 
-		req.Close = true
-		req.Header.Add("content-type", "application/json")
-
-		res, err := client.http.Do(req)
+		f, err := os.ReadFile(path)
 		if err != nil {
-			c <- result{nil, err}
-			return
+			return err
 		}
 
-		defer res.Body.Close()
+		return client.database.IndexFeature(ctx, f)
+	}
 
-		body, err := io.ReadAll(res.Body)
-		c <- result{body, err}
-
+	errorFn := walker.WithErrorCallback(func(path string, err error) error {
+		return err
 	})
 
-	result := <-c
+	return walker.Walk(path, walkFn, errorFn)
 
-	return result.bytes, result.err
 }
 
-func (client *PIPClient) requestBodyReader(latitude string, longitude string) (io.Reader, error) {
-	reqJSON := []byte{}
+func (client *PIPClient) UpdateHierarchy(ctx context.Context, bytes []byte) ([]byte, error) {
+	inputs := &filter.SPRInputs{}
+	resultsCallback := hierarchy.FirstButForgivingSPRResultsFunc
+	updateCallback := hierarchy.DefaultPointInPolygonHierarchyResolverUpdateCallback()
 
-	latitudeBytes := []byte(latitude)
-	longitudeBytes := []byte(longitude)
+	_, newBytes, err := client.resolver.PointInPolygonAndUpdate(ctx, inputs, resultsCallback, updateCallback, bytes)
 
-	reqJSON, err := sjson.SetRawBytes(reqJSON, "latitude", latitudeBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	reqJSON, err = sjson.SetRawBytes(reqJSON, "longitude", longitudeBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	reqJSON, err = sjson.SetBytes(reqJSON, "is_current", []int{1, -1})
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewReader(reqJSON), nil
+	return newBytes, err
 }

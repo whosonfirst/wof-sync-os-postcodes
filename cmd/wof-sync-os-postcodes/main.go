@@ -27,9 +27,9 @@ func main() {
 	var onsCSVPath = flag.String("ons-csv-path", "", "The path to the ONS postcodes CSV")
 	var onsDate = flag.String("ons-date", "", "The date of the ONS postalcodes CSV")
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
-	var pipURI = flag.String("pip-uri", "http://localhost:8080/api/point-in-polygon", "The host of the PIP server")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
+	var wofAdminPath = flag.String("wof-admin-path", "", "The path to the GB admin WOF files, used for PIPing the records")
 	flag.Parse()
 
 	dryRun := *dryRunFlag
@@ -62,13 +62,26 @@ func main() {
 
 	// Use separate pipclients for creating and updating features, so we can
 	// enable/disable them independently.
-	createPip := pipclient.NewPIPClient(*pipURI)
+	createPip, err := pipclient.NewPIPClient(ctx)
+	if err != nil {
+		log.Fatalf("Failed to create PIP client: %s", err)
+	}
+
 	var updatePip *pipclient.PIPClient
 	if *noUpdateHierarchy {
 		log.Print("Updating hierarchy for existing features is disabled")
 	} else {
-		updatePip = pipclient.NewPIPClient(*pipURI)
+		updatePip = createPip
 	}
+
+	log.Print("Building admin rtree index")
+
+	err = createPip.BuildDatabase(ctx, *wofAdminPath)
+	if err != nil {
+		log.Fatalf("Failed to build admin rtree index: %s", err)
+	}
+
+	log.Print("Built admin rtree index")
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}

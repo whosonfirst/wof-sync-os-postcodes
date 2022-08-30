@@ -6,7 +6,7 @@ It should be rerun whenever there's a new release of the Postcode Directory, whi
 
 It needs a directory containing [`whosonfirst-data-postalcode-gb`](https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb), and the most recent ONS Postcode Directory as a single CSV file.
 
-It also needs a running [PIP HTTP server](https://github.com/whosonfirst/go-whosonfirst-spatial-www) containing the UK admin data, for building the Who’s on First hierarchy from coordinates provided in the ONS data. It defaults to finding this at `http://localhost:8080/api/point-in-polygon`, but can be set with a flag.
+It also needs a copy of the UK admin data, for building the Who’s on First hierarchy from coordinates provided in the ONS data.
 
 It will ignore the coordinates from Northern Irish postcodes (starting with BT) as these are under more restrictive licensing conditions than the rest of the UK, so aren't suitable for inclusion in Who’s on First. It will use the inception/cessation data, however.
 
@@ -19,7 +19,7 @@ It will ignore the coordinates from Northern Irish postcodes (starting with BT) 
 Build the binary with a simple `make`. Then:
 
 ```shell
-./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01
+./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01 -wof-admin-path ../whosonfirst-data-admin-gb/data
 ```
 
 ## Performing the sync
@@ -36,18 +36,11 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-After executing, copy the ONS directory CSV into `/mnt/wof`. To bring up the PIP server, open tmux or your favourite screen-like app, and in one window execute:
-
-```shell
-cd /mnt/wof
-./wof-spatial-server -spatial-database-uri 'rtree:///?strict=false' /mnt/wof/whosonfirst-data-admin-gb
-```
-
-And in another window perform the sync with something like:
+Perform the sync with something like:
 
 ```shell
 /mnt/wof
-./wof-sync-os-postcodes -wof-postalcodes-path whosonfirst-data-postalcode-gb/data/ -ons-csv-path ONSPD_AUG_2021_UK.csv -ons-date 2021-08-01
+./wof-sync-os-postcodes -wof-postalcodes-path whosonfirst-data-postalcode-gb/data/ -ons-csv-path ONSPD_AUG_2021_UK.csv -ons-date 2021-08-01 -wof-admin-path whosonfirst-data-admin-gb/data
 ```
 
 Now find something else to do for a few hours. 
@@ -68,6 +61,5 @@ Some tips:
 
 - https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb
 - https://github.com/whosonfirst-data/whosonfirst-data-admin-gb
-- https://github.com/whosonfirst/go-whosonfirst-spatial-www
-- https://github.com/whosonfirst/go-whosonfirst-spatial-pip
+- https://github.com/whosonfirst/go-whosonfirst-spatial-hierarchy
 - http://geoportal.statistics.gov.uk
