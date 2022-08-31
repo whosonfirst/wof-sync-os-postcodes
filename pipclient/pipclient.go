@@ -2,12 +2,11 @@ package pipclient
 
 import (
 	"context"
-	"os"
-	"strings"
+	"fmt"
+	"path/filepath"
 
-	"github.com/saracen/walker"
 	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
-	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
+	_ "github.com/whosonfirst/go-whosonfirst-spatial-sqlite"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 )
@@ -17,8 +16,13 @@ type PIPClient struct {
 	resolver *hierarchy.PointInPolygonHierarchyResolver
 }
 
-func NewPIPClient(ctx context.Context) (*PIPClient, error) {
-	url := "rtree:///?strict=false"
+func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("sqlite:///?dsn=%s", absPath)
 	db, err := database.NewSpatialDatabase(ctx, url)
 	if err != nil {
 		return nil, err
@@ -30,32 +34,6 @@ func NewPIPClient(ctx context.Context) (*PIPClient, error) {
 	}
 
 	return &PIPClient{database: db, resolver: resolver}, nil
-}
-
-func (client *PIPClient) BuildDatabase(ctx context.Context, path string) error {
-	walkFn := func(path string, fi os.FileInfo) error {
-		if fi.IsDir() {
-			return nil
-		}
-
-		if !strings.HasSuffix(path, ".geojson") {
-			return nil
-		}
-
-		f, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		return client.database.IndexFeature(ctx, f)
-	}
-
-	errorFn := walker.WithErrorCallback(func(path string, err error) error {
-		return err
-	})
-
-	return walker.Walk(path, walkFn, errorFn)
-
 }
 
 func (client *PIPClient) UpdateHierarchy(ctx context.Context, bytes []byte) ([]byte, error) {

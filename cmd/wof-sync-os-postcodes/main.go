@@ -29,7 +29,7 @@ func main() {
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
-	var wofAdminPath = flag.String("wof-admin-path", "", "The path to the GB admin WOF files, used for PIPing the records")
+	var wofAdminSqlitePath = flag.String("wof-admin-sqlite-path", "", "The path to the GB admin SQLite database, used for PIPing the records")
 	flag.Parse()
 
 	dryRun := *dryRunFlag
@@ -62,7 +62,7 @@ func main() {
 
 	// Use separate pipclients for creating and updating features, so we can
 	// enable/disable them independently.
-	createPip, err := pipclient.NewPIPClient(ctx)
+	createPip, err := pipclient.NewPIPClient(ctx, *wofAdminSqlitePath)
 	if err != nil {
 		log.Fatalf("Failed to create PIP client: %s", err)
 	}
@@ -73,15 +73,6 @@ func main() {
 	} else {
 		updatePip = createPip
 	}
-
-	log.Print("Building admin rtree index")
-
-	err = createPip.BuildDatabase(ctx, *wofAdminPath)
-	if err != nil {
-		log.Fatalf("Failed to build admin rtree index: %s", err)
-	}
-
-	log.Print("Built admin rtree index")
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}

@@ -19,7 +19,7 @@ It will ignore the coordinates from Northern Irish postcodes (starting with BT) 
 Build the binary with a simple `make`. Then:
 
 ```shell
-./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01 -wof-admin-path ../whosonfirst-data-admin-gb/data
+./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01 -wof-admin-sqlite-path ../whosonfirst-data-admin-gb.sqlite
 ```
 
 ## Performing the sync
@@ -40,7 +40,7 @@ Perform the sync with something like:
 
 ```shell
 /mnt/wof
-./wof-sync-os-postcodes -wof-postalcodes-path whosonfirst-data-postalcode-gb/data/ -ons-csv-path ONSPD_AUG_2021_UK.csv -ons-date 2021-08-01 -wof-admin-path whosonfirst-data-admin-gb/data
+./wof-sync-os-postcodes -wof-postalcodes-path whosonfirst-data-postalcode-gb/data/ -ons-csv-path ONSPD_AUG_2021_UK.csv -ons-date 2021-08-01 -wof-admin-sqlite-path whosonfirst-data-admin-gb.sqlite
 ```
 
 Now find something else to do for a few hours. 
