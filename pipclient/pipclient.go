@@ -37,7 +37,7 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 }
 
 func (client *PIPClient) UpdateHierarchy(ctx context.Context, bytes []byte) ([]byte, error) {
-	inputs := &filter.SPRInputs{}
+	inputs := &filter.SPRInputs{IsCurrent: []int64{-1, 1}}
 	resultsCallback := hierarchy.FirstButForgivingSPRResultsFunc
 	updateCallback := hierarchy.DefaultPointInPolygonHierarchyResolverUpdateCallback()
 
