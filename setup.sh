@@ -1,22 +1,23 @@
 #!/bin/bash
 set -eo pipefail
 
-MOUNT_DIR="/mnt/wof"
+WORKING_DIR="/mnt/wof"
+PERSISTENT_DIR="./wof-cmd"
 
-sudo mkdir -p "$MOUNT_DIR"
-sudo mount -t tmpfs -o size=90%,nr_inodes=0 wof "$MOUNT_DIR"
-sudo chown $(whoami):$(whoami) "$MOUNT_DIR"
+sudo mkfs.ext4 -F /dev/nvme0n1
+sudo mkdir -p "$WORKING_DIR"
+sudo mount /dev/nvme0n1 "$WORKING_DIR"
+sudo chown $(whoami):$(whoami) "$WORKING_DIR"
 
 # Install Golang PPA so we have latest
 sudo add-apt-repository -y ppa:longsleep/golang-backports
-sudo update
+sudo apt -y update
 
 # Add stuff for building, and other useful utils
 sudo apt install -y build-essential git golang tmux unzip jq
 
-cd "$MOUNT_DIR"
+cd "$WORKING_DIR"
 
-git clone --depth 1 https://github.com/whosonfirst-data/whosonfirst-data-admin-gb
 git clone https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb
 # Disable GC because it really hurts the commit performance if it kicks in, and this checkout is not long lived
 cd whosonfirst-data-postalcode-gb
@@ -25,11 +26,7 @@ cd ..
 
 # Grab the latest release
 DOWNLOAD_URL=$(curl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-postcodes/releases/latest" | jq -r '.assets[].browser_download_url' | grep linux_x86_64)
-curl -sL "${DOWNLOAD_URL}" -o wof-sync-os-postcodes
-chmod +x wof-sync-os-postcodes
+curl -sL "${DOWNLOAD_URL}" -o "$PERSISTENT_DIR/wof-sync-os-postcodes"
+chmod +x "$PERSISTENT_DIR/wof-sync-os-postcodes"
 
-git clone https://github.com/whosonfirst/go-whosonfirst-spatial-www
-cd go-whosonfirst-spatial-www
-make cli
-cp bin/server ../wof-spatial-server
-cd ..
+cd "$PERSISTENT_DIR"

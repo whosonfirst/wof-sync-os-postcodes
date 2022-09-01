@@ -26,9 +26,9 @@ Build the binary with a simple `make`. Then:
 
 The `whosonfirst-data-postalcode-gb` repo has a large number of small files, and performing the actual sync and subsequent git operations against the repo is fairly painful.
 
-I suggest using a 64GB machine with a ram disk. The ramdisk provides tolerable IO performance, and brings time to perform a fresh sync down to few hours. In my experience 32GB isn't enough and you will experience out-of-memory crashes, losing all your progress, as the RAM disk will not persist.
+I suggest using a 32GB machine with an NVME SSD disk. The NVME SSD provides tolerable IO performance, and brings time to perform a fresh sync down to few hours.
 
-`setup.sh` contains a script which performs much of the set up for you. It expects to be run in an empty, ephemeral VM, so if you're running on a machine you care about, please read the script carefully before executing.
+`setup.sh` contains a script which performs much of the set up for you. It expects to be run in an empty, ephemeral VM on Google Cloud Compute, so if you're running on a machine you care about, please read the script carefully before executing.
 
 ```shell
 curl https://raw.githubusercontent.com/whosonfirst/wof-sync-os-postcodes/master/setup.sh -o setup.sh
