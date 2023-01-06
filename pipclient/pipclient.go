@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 
 	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
+
+	hierarchyFilter "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy/filter"
+
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-sqlite"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
@@ -22,7 +25,7 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 		return nil, err
 	}
 
-	url := fmt.Sprintf("sqlite:///?dsn=%s", absPath)
+	url := fmt.Sprintf("sqlite://?dsn=%s", absPath)
 	db, err := database.NewSpatialDatabase(ctx, url)
 	if err != nil {
 		return nil, err
@@ -38,7 +41,7 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 
 func (client *PIPClient) UpdateHierarchy(ctx context.Context, bytes []byte) ([]byte, error) {
 	inputs := &filter.SPRInputs{IsCurrent: []int64{-1, 1}}
-	resultsCallback := hierarchy.FirstButForgivingSPRResultsFunc
+	resultsCallback := hierarchyFilter.FirstButForgivingSPRResultsFunc
 	updateCallback := hierarchy.DefaultPointInPolygonHierarchyResolverUpdateCallback()
 
 	_, newBytes, err := client.resolver.PointInPolygonAndUpdate(ctx, inputs, resultsCallback, updateCallback, bytes)
