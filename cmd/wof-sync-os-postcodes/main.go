@@ -30,6 +30,7 @@ func main() {
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
 	var wofAdminSqlitePath = flag.String("wof-admin-sqlite-path", "", "The path to the GB admin SQLite database, used for PIPing the records")
+	var onlyPostcode = flag.String("only-postcode", "", "Just do work on the specified postcode")
 	flag.Parse()
 
 	dryRun := *dryRunFlag
@@ -93,6 +94,11 @@ func main() {
 			return errors.New("name not found on existing record")
 		}
 
+		// Track which postcodes we've seen, so we can make new ones later on
+		seenPostcodesMutex.Lock()
+		seenPostcodes[postcode] = true
+		seenPostcodesMutex.Unlock()
+
 		id := ""
 		idResult := gjson.GetBytes(f, "id")
 		if idResult.Exists() {
@@ -103,10 +109,9 @@ func main() {
 			return fmt.Errorf("id not found on existing record with name %s", postcode)
 		}
 
-		// Track which postcodes we've seen, so we can make new ones later on
-		seenPostcodesMutex.Lock()
-		seenPostcodes[postcode] = true
-		seenPostcodesMutex.Unlock()
+		if onlyPostcode != nil && postcode != *onlyPostcode {
+			return nil
+		}
 
 		country := ""
 		countryResult := gjson.GetBytes(f, "properties.wof:country")
@@ -179,6 +184,10 @@ func main() {
 	onsCB := func(pc *onsdb.PostcodeData) error {
 		// Skip if we've already seen this postcode
 		if seenPostcodes[pc.Postcode] {
+			return nil
+		}
+
+		if onlyPostcode != nil && *onlyPostcode != pc.Postcode {
 			return nil
 		}
 
