@@ -20,6 +20,9 @@ github.com/aaronland/go-pool/v2
 # github.com/aaronland/go-roster v1.0.0
 ## explicit; go 1.16
 github.com/aaronland/go-roster
+# github.com/aaronland/go-sqlite-mattn v0.0.1
+## explicit; go 1.18
+github.com/aaronland/go-sqlite-mattn
 # github.com/aaronland/go-sqlite-modernc v0.0.1
 ## explicit; go 1.18
 github.com/aaronland/go-sqlite-modernc
@@ -30,7 +33,7 @@ github.com/aaronland/go-sqlite/v2/database
 # github.com/aaronland/go-string v1.0.0
 ## explicit; go 1.16
 github.com/aaronland/go-string/random
-# github.com/aaronland/go-uid v0.4.0
+# github.com/aaronland/go-uid v0.3.0
 ## explicit; go 1.18
 github.com/aaronland/go-uid
 # github.com/aaronland/go-uid-artisanal v0.0.2
@@ -45,8 +48,8 @@ github.com/aaronland/go-uid-whosonfirst
 # github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129
 ## explicit
 github.com/andres-erbsen/clock
-# github.com/cenkalti/backoff/v4 v4.2.0
-## explicit; go 1.18
+# github.com/cenkalti/backoff/v4 v4.1.3
+## explicit; go 1.13
 github.com/cenkalti/backoff/v4
 # github.com/g8rswimmer/error-chain v1.0.0
 ## explicit
@@ -54,7 +57,7 @@ github.com/g8rswimmer/error-chain
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
-# github.com/hashicorp/errwrap v1.1.0
+# github.com/hashicorp/errwrap v1.0.0
 ## explicit
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
@@ -119,7 +122,7 @@ github.com/tidwall/gjson
 # github.com/tidwall/match v1.1.1
 ## explicit; go 1.15
 github.com/tidwall/match
-# github.com/tidwall/pretty v1.2.1
+# github.com/tidwall/pretty v1.2.0
 ## explicit; go 1.16
 github.com/tidwall/pretty
 # github.com/tidwall/sjson v1.2.5
@@ -144,7 +147,7 @@ github.com/whosonfirst/go-whosonfirst-crawl
 ## explicit; go 1.18
 github.com/whosonfirst/go-whosonfirst-export/v2
 github.com/whosonfirst/go-whosonfirst-export/v2/properties
-# github.com/whosonfirst/go-whosonfirst-feature v0.0.26
+# github.com/whosonfirst/go-whosonfirst-feature v0.0.25
 ## explicit; go 1.18
 github.com/whosonfirst/go-whosonfirst-feature/alt
 github.com/whosonfirst/go-whosonfirst-feature/geometry
@@ -220,7 +223,7 @@ go.uber.org/ratelimit
 # golang.org/x/mod v0.3.0
 ## explicit; go 1.12
 golang.org/x/mod/semver
-# golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
+# golang.org/x/sync v0.1.0
 ## explicit
 golang.org/x/sync/errgroup
 # golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab

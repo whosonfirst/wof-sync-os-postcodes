@@ -8,7 +8,7 @@ import (
 	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
 
 	hierarchyFilter "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy/filter"
-
+	_ "github.com/aaronland/go-sqlite-mattn"
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-sqlite"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
@@ -25,7 +25,16 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 		return nil, err
 	}
 
-	url := fmt.Sprintf("sqlite://?dsn=%s", absPath)
+	// URI scheme is still-unfortunately convoluted. It is the pairing
+	// of the whosonfirst/go-whosonfirst-spatial/data scheme (sqlite://?dsn=)
+	// and the aaronland/go-sqlite/v2 scheme (modernc://{STUFF} or mattn://{STUFF})
+	// so we end up with sqlite://?dsn=modernc://{STUFF}. See also:
+	// https://github.com/aaronland/go-sqlite/blob/main/database/dsn.go#L11
+	// (20230106/thisisaaronland)
+	
+	// url := fmt.Sprintf("sqlite://?dsn=modernc://%s", absPath)
+
+	url := fmt.Sprintf("sqlite://?dsn=mattn://%s", absPath)	
 	db, err := database.NewSpatialDatabase(ctx, url)
 	if err != nil {
 		return nil, err
