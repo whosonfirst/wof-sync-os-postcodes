@@ -12,10 +12,14 @@ Documentation is incomplete.
 
 ```
 import (
-	"github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"	
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-sqlite"
+)
+
+import (
+	"github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
+	hierarchy_filter "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy/filter"		
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
-	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
+	spatial_filter "github.com/whosonfirst/go-whosonfirst-spatial/filter"
 )
 
 body := []byte(`{"type":"Feature" ...}`)
@@ -24,9 +28,9 @@ spatial_db, _ := database.NewSpatialDatabase(ctx, "sqlite://?dsn=/usr/local/data
 
 resolver, _ := hierarchy.NewPointInPolygonHierarchyResolver(ctx, spatial_db, nil)
 
-inputs := &filter.SPRInputs{}
+inputs := &spatial_filter.SPRInputs{}
 
-results_cb := hierarchy.FirstButForgivingSPRResultsFunc
+results_cb := hierarchy_filter.FirstButForgivingSPRResultsFunc
 update_cb := hierarchy.DefaultPointInPolygonHierarchyResolverUpdateCallback()
 		
 new_body, _ := resolver.PointInPolygonAndUpdate(ctx, inputs, results_cb, update_cb, body)

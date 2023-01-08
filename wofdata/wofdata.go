@@ -135,7 +135,7 @@ func (d *WOFData) CeaseFeature(json []byte, date time.Time, dryRun bool) (change
 	return d.exportFeature(json, originalJSON, dryRun)
 }
 
-func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool) (changed bool, err error) {
+func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, pip *pipclient.PIPClient, dryRun bool, ignoreRestrictiveLicence bool) (changed bool, err error) {
 	originalJSON := make([]byte, len(json))
 	copy(originalJSON, json)
 
@@ -144,7 +144,7 @@ func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, pip *pi
 		return
 	}
 
-	json, err = setGeometry(json, pcData, pip)
+	json, err = setGeometry(json, pcData, pip, ignoreRestrictiveLicence)
 	if err != nil {
 		return
 	}
@@ -228,7 +228,10 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, pip *pipclient.PIPClient, d
 		return err
 	}
 
-	json, err = setGeometry(json, pc, pip)
+	// NewFeature doesn't support `ignoreRestrictiveLicence` because new features
+	// should be minted with the restrictive licence, and then later can be
+	// overwritten to ignore this.
+	json, err = setGeometry(json, pc, pip, false)
 	if err != nil {
 		return err
 	}
@@ -319,12 +322,12 @@ func setDates(json []byte, pc *onsdb.PostcodeData) ([]byte, error) {
 	return json, nil
 }
 
-func setGeometry(json []byte, pc *onsdb.PostcodeData, pip *pipclient.PIPClient) ([]byte, error) {
+func setGeometry(json []byte, pc *onsdb.PostcodeData, pip *pipclient.PIPClient, ignoreRestrictiveLicence bool) ([]byte, error) {
 	latitude := pc.Latitude
 	longitude := pc.Longitude
 
 	// Set postcodes where we're not allowed to know where they are to null island
-	if !shouldSetGeometry(pc) {
+	if !shouldSetGeometry(pc, ignoreRestrictiveLicence) {
 		latitude = "0.0"
 		longitude = "0.0"
 	}
@@ -493,7 +496,11 @@ func setHierarchy(json []byte, pip *pipclient.PIPClient, pc *onsdb.PostcodeData)
 
 // Don't set geometry for BT postcodes (Northern Ireland), because the
 // licensing for these is more restrictive. 🙄
-func shouldSetGeometry(pc *onsdb.PostcodeData) bool {
+func shouldSetGeometry(pc *onsdb.PostcodeData, ignoreRestrictiveLicence bool) bool {
+	if ignoreRestrictiveLicence {
+		return true
+	}
+
 	name := pc.Postcode
 	return !strings.HasPrefix(name, "BT")
 }

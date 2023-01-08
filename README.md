@@ -8,13 +8,21 @@ It needs a directory containing [`whosonfirst-data-postalcode-gb`](https://githu
 
 It also needs a copy of the UK admin data, for building the Who’s on First hierarchy from coordinates provided in the ONS data.
 
-It will ignore the coordinates from Northern Irish postcodes (starting with BT) as these are under more restrictive licensing conditions than the rest of the UK, so aren't suitable for inclusion in Who’s on First. It will use the inception/cessation data, however.
+By default it will ignore the coordinates from Northern Irish postcodes (starting with BT) as these are under more restrictive licensing conditions than the rest of the UK, so aren't suitable for inclusion in Who’s on First. It will use the inception/cessation data, however. You can override this with `-ignore-restrictive-licence` if you have a licence for internal business use, but don't merge these changes into mainline WOF as it's not a permitted licence.
 
 ## Requirements
 
 - Golang 1.17
 
 ## Example
+
+First you need a spatial sqlite database containing GB admin. Get `whosonfirst-data-admin-gb`, and the [`wof-sqlite-features-index` binary](https://github.com/whosonfirst/go-whosonfirst-sqlite-features-index) and then run:
+
+```shell
+./wof-sqlite-index-features -database-uri modernc://$(pwd)/whosonfirst-data-admin-gb.sqlite -spatial-tables -timings $(pwd)/whosonfirst-data-admin-gb
+```
+
+This will output a spatial sqlite DB containing the GB admin data into `whosonfirst-data-admin-gb.sqlite`. Expect this to take a couple of minutes to build and be about 2GB.
 
 Build the binary with a simple `make`. Then:
 
