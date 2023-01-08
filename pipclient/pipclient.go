@@ -7,8 +7,8 @@ import (
 
 	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
 
-	hierarchyFilter "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy/filter"
 	_ "github.com/aaronland/go-sqlite-mattn"
+	hierarchyFilter "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy/filter"
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-sqlite"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
@@ -31,10 +31,10 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 	// so we end up with sqlite://?dsn=modernc://{STUFF}. See also:
 	// https://github.com/aaronland/go-sqlite/blob/main/database/dsn.go#L11
 	// (20230106/thisisaaronland)
-	
+
 	// url := fmt.Sprintf("sqlite://?dsn=modernc://%s", absPath)
 
-	url := fmt.Sprintf("sqlite://?dsn=mattn://%s", absPath)	
+	url := fmt.Sprintf("sqlite://?dsn=mattn://%s", absPath)
 	db, err := database.NewSpatialDatabase(ctx, url)
 	if err != nil {
 		return nil, err

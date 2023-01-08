@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,11 +30,14 @@ func main() {
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
+	var noCreate = flag.Bool("no-create", false, "Set to disable the creation of new any features")
 	var wofAdminSqlitePath = flag.String("wof-admin-sqlite-path", "", "The path to the GB admin SQLite database, used for PIPing the records")
-	var onlyPostcode = flag.String("only-postcode", "", "Just do work on the specified postcode")
+	var prefixFilter = flag.String("prefix-filter", "", "Just do work on the postcode starting with the string")
+	var ignoreRestrictiveLicenceFlag = flag.Bool("ignore-restrictive-licence", false, "Ignore the restrictive license on the Northern Ireland postcodes")
 	flag.Parse()
 
 	dryRun := *dryRunFlag
+	ignoreRestrictiveLicence := *ignoreRestrictiveLicenceFlag
 
 	if dryRun {
 		log.Print("Performing dry run")
@@ -109,7 +113,7 @@ func main() {
 			return fmt.Errorf("id not found on existing record with name %s", postcode)
 		}
 
-		if onlyPostcode != nil && postcode != *onlyPostcode {
+		if prefixFilter != nil && !strings.HasPrefix(postcode, *prefixFilter) {
 			return nil
 		}
 
@@ -159,7 +163,7 @@ func main() {
 			return nil
 		}
 
-		changed, err := wof.UpdateFeature(f, postcodeData, updatePip, dryRun)
+		changed, err := wof.UpdateFeature(f, postcodeData, updatePip, dryRun, ignoreRestrictiveLicence)
 		if changed {
 			log.Printf("Updated postcode: %s (ID %s)", postcode, id)
 			atomic.AddUint64(&updatedCounter, 1)
@@ -179,31 +183,35 @@ func main() {
 		log.Fatalf("Iteration failed: %s", err)
 	}
 
-	log.Printf("Seen %d postcodes, now checking for new postcodes", len(seenPostcodes))
+	if *noCreate {
+		log.Printf("no-create flag enabled, so skipping new postcodes")
+	} else {
+		log.Printf("Seen %d postcodes, now checking for new postcodes", len(seenPostcodes))
 
-	onsCB := func(pc *onsdb.PostcodeData) error {
-		// Skip if we've already seen this postcode
-		if seenPostcodes[pc.Postcode] {
-			return nil
+		onsCB := func(pc *onsdb.PostcodeData) error {
+			// Skip if we've already seen this postcode
+			if seenPostcodes[pc.Postcode] {
+				return nil
+			}
+
+			if prefixFilter != nil && !strings.HasPrefix(pc.Postcode, *prefixFilter) {
+				return nil
+			}
+
+			if !shouldCreateNewPostcode(pc) {
+				log.Printf("Skipping new postcode we're not creating: %s", pc.Postcode)
+				return nil
+			}
+
+			log.Printf("Creating new postcode: %s", pc.Postcode)
+			atomic.AddUint64(&newCounter, 1)
+			return wof.NewFeature(pc, createPip, dryRun)
 		}
 
-		if onlyPostcode != nil && *onlyPostcode != pc.Postcode {
-			return nil
+		err = db.Iterate(onsCB)
+		if err != nil {
+			log.Fatal(err)
 		}
-
-		if !shouldCreateNewPostcode(pc) {
-			log.Printf("Skipping new postcode we're not creating: %s", pc.Postcode)
-			return nil
-		}
-
-		log.Printf("Creating new postcode: %s", pc.Postcode)
-		atomic.AddUint64(&newCounter, 1)
-		return wof.NewFeature(pc, createPip, dryRun)
-	}
-
-	err = db.Iterate(onsCB)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	ceased := atomic.LoadUint64(&ceasedCounter)
