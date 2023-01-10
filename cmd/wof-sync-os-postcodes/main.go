@@ -31,6 +31,7 @@ func main() {
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
 	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
 	var noCreate = flag.Bool("no-create", false, "Set to disable the creation of new any features")
+	var noUpdate = flag.Bool("no-update", false, "Set to disable the updating of existing features")
 	var wofAdminSqlitePath = flag.String("wof-admin-sqlite-path", "", "The path to the GB admin SQLite database, used for PIPing the records")
 	var prefixFilter = flag.String("prefix-filter", "", "Just do work on the postcode starting with the string")
 	var ignoreRestrictiveLicenceFlag = flag.Bool("ignore-restrictive-licence", false, "Ignore the restrictive license on the Northern Ireland postcodes")
@@ -103,6 +104,16 @@ func main() {
 		seenPostcodes[postcode] = true
 		seenPostcodesMutex.Unlock()
 
+		// We're doing updating existing postcodes in this pass, so skip the rest
+		if *noUpdate {
+			return nil
+		}
+
+		// Check whether the postcode match the prefix-filter flag, and skip if not
+		if prefixFilter != nil && !strings.HasPrefix(postcode, *prefixFilter) {
+			return nil
+		}
+
 		id := ""
 		idResult := gjson.GetBytes(f, "id")
 		if idResult.Exists() {
@@ -111,10 +122,6 @@ func main() {
 
 		if id == "" {
 			return fmt.Errorf("id not found on existing record with name %s", postcode)
-		}
-
-		if prefixFilter != nil && !strings.HasPrefix(postcode, *prefixFilter) {
-			return nil
 		}
 
 		country := ""
