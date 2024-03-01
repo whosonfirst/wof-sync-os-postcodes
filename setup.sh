@@ -4,7 +4,8 @@ set -eo pipefail
 WORKING_DIR="/mnt/wof"
 PERSISTENT_DIR="./wof-cmd"
 
-sudo mkfs.ext4 -F /dev/nvme0n1
+# Set 2KB per inode
+sudo mkfs.ext4 -i 2048 -F /dev/nvme0n1
 sudo mkdir -p "$WORKING_DIR"
 sudo mount /dev/nvme0n1 "$WORKING_DIR"
 sudo chown $(whoami):$(whoami) "$WORKING_DIR"
@@ -14,7 +15,7 @@ sudo add-apt-repository -y ppa:longsleep/golang-backports
 sudo apt -y update
 
 # Add stuff for building, and other useful utils
-sudo apt install -y build-essential git golang tmux unzip jq
+sudo apt install -y build-essential git golang tmux unzip jq libsqlite3-dev libicu-dev
 
 cd "$WORKING_DIR"
 
