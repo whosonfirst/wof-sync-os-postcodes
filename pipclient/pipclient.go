@@ -49,7 +49,7 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 }
 
 func (client *PIPClient) UpdateHierarchy(ctx context.Context, bytes []byte) ([]byte, error) {
-	inputs := &filter.SPRInputs{IsCurrent: []int64{-1, 1}}
+	inputs := &filter.SPRInputs{IsCurrent: []int64{-1, 1}, Placetypes: []string{"country", "macroregion", "continent", "empire", "region", "macrocounty", "county", "localadmin", "locality"}}
 	resultsCallback := hierarchyFilter.FirstButForgivingSPRResultsFunc
 	updateCallback := hierarchy.DefaultPointInPolygonHierarchyResolverUpdateCallback()
 
