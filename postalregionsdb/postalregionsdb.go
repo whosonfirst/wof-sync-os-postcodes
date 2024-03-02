@@ -36,6 +36,10 @@ func (db *PostalRegionsDB) Build() error {
 			return nil
 		}
 
+		if strings.Contains(path, "alt") {
+			return nil
+		}
+
 		f, err := os.ReadFile(path)
 		if err != nil {
 			return err
