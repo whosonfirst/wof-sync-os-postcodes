@@ -21,7 +21,7 @@ type PostalRegionsDB struct {
 }
 
 func NewPostalRegionsDB(dataPath string) *PostalRegionsDB {
-	db := &PostalRegionsDB{dataPath: &dataPath}
+	db := &PostalRegionsDB{dataPath: &dataPath, Regions: make(map[string]*PostalRegion)}
 
 	return db
 }

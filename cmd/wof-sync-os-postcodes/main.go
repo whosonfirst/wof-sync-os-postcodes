@@ -62,14 +62,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Print("Finished building ONS database")
 
+	log.Print("Building postalregions database")
 	regionDB := postalregionsdb.NewPostalRegionsDB(*wofAdminDataPath)
 	err = regionDB.Build()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Print("Finished building ONS database")
+	log.Print("Finished building postalregions database")
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}
