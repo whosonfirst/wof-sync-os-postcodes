@@ -494,8 +494,8 @@ func setHierarchy(json []byte, prDB *postalregionsdb.PostalRegionsDB, pcData *on
 	region := prDB.Regions[regionString]
 
 	if region == nil {
-		log.Printf("Unable to find parent postalregion for %s, falling back to nil", pcData.Postcode)
-		json, err := sjson.SetBytes(json, "properties.wof:parent_id", nil)
+		log.Printf("Unable to find parent postalregion for %s, falling back to -1", pcData.Postcode)
+		json, err := sjson.SetBytes(json, "properties.wof:parent_id", -1)
 		if err != nil {
 			return nil, err
 		}
