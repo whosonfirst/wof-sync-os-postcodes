@@ -12,7 +12,7 @@ By default it will ignore the coordinates from Northern Irish postcodes (startin
 
 ## Requirements
 
-- Golang 1.17
+- Golang 1.21
 
 ## Example
 
