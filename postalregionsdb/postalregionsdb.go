@@ -1,6 +1,7 @@
 package postalregionsdb
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -71,7 +72,7 @@ func (db *PostalRegionsDB) Build() error {
 	}
 
 	errorFn := walker.WithErrorCallback(func(path string, err error) error {
-		return err
+		return fmt.Errorf("failed to read file %s: %w", path, err)
 	})
 
 	return walker.Walk(*db.dataPath, walkFn, errorFn)
