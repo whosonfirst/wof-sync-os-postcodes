@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/saracen/walker"
 	"github.com/whosonfirst/go-whosonfirst-feature/properties"
@@ -27,6 +28,8 @@ func NewPostalRegionsDB(dataPath string) *PostalRegionsDB {
 }
 
 func (db *PostalRegionsDB) Build() error {
+	var mutex = &sync.RWMutex{}
+
 	walkFn := func(path string, fi os.FileInfo) error {
 		if fi.IsDir() {
 			return nil
@@ -66,11 +69,13 @@ func (db *PostalRegionsDB) Build() error {
 
 		hierarchy := properties.Hierarchies(f)
 
+		mutex.Lock()
 		db.Regions[name] = &PostalRegion{
 			Name:      name,
 			WofID:     id,
 			Hierarchy: hierarchy,
 		}
+		mutex.Unlock()
 
 		return nil
 	}
