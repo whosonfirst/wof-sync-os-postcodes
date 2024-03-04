@@ -13,7 +13,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
-	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
+	"github.com/whosonfirst/wof-sync-os-postcodes/postalregionsdb"
 	"github.com/whosonfirst/wof-sync-os-postcodes/postcodevalidator"
 	"github.com/whosonfirst/wof-sync-os-postcodes/wofdata"
 
@@ -29,10 +29,9 @@ func main() {
 	var onsDate = flag.String("ons-date", "", "The date of the ONS postalcodes CSV")
 	var wofPostalcodesPath = flag.String("wof-postalcodes-path", "", "The path to the WOF postalcodes data")
 	var dryRunFlag = flag.Bool("dry-run", false, "Set to true to do nothing")
-	var noUpdateHierarchy = flag.Bool("no-update-hierarchy", false, "Set true to disable updating hierarchy on existing features")
 	var noCreate = flag.Bool("no-create", false, "Set to disable the creation of new any features")
 	var noUpdate = flag.Bool("no-update", false, "Set to disable the updating of existing features")
-	var wofAdminSqlitePath = flag.String("wof-admin-sqlite-path", "", "The path to the GB admin SQLite database, used for PIPing the records")
+	var wofAdminDataPath = flag.String("wof-admin-data-path", "", "The path to the GB admin data directory")
 	var prefixFilter = flag.String("prefix-filter", "", "Just do work on the postcode starting with the string")
 	var ignoreRestrictiveLicenceFlag = flag.Bool("ignore-restrictive-licence", false, "Ignore the restrictive license on the Northern Ireland postcodes")
 	flag.Parse()
@@ -63,22 +62,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	log.Print("Finished building ONS database")
 
-	// Use separate pipclients for creating and updating features, so we can
-	// enable/disable them independently.
-	createPip, err := pipclient.NewPIPClient(ctx, *wofAdminSqlitePath)
+	log.Print("Building postalregions database")
+	regionDB := postalregionsdb.NewPostalRegionsDB(*wofAdminDataPath)
+	err = regionDB.Build()
 	if err != nil {
-		log.Fatalf("Failed to create PIP client: %s", err)
+		log.Fatal(err)
 	}
-
-	var updatePip *pipclient.PIPClient
-	if *noUpdateHierarchy {
-		log.Print("Updating hierarchy for existing features is disabled")
-	} else {
-		updatePip = createPip
-	}
+	log.Print("Finished building postalregions database")
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}
@@ -170,7 +162,7 @@ func main() {
 			return nil
 		}
 
-		changed, err := wof.UpdateFeature(f, postcodeData, updatePip, dryRun, ignoreRestrictiveLicence)
+		changed, err := wof.UpdateFeature(f, postcodeData, regionDB, dryRun, ignoreRestrictiveLicence)
 		if changed {
 			log.Printf("Updated postcode: %s (ID %s)", postcode, id)
 			atomic.AddUint64(&updatedCounter, 1)
@@ -212,7 +204,7 @@ func main() {
 
 			log.Printf("Creating new postcode: %s", pc.Postcode)
 			atomic.AddUint64(&newCounter, 1)
-			return wof.NewFeature(pc, createPip, dryRun)
+			return wof.NewFeature(pc, regionDB, dryRun)
 		}
 
 		err = db.Iterate(onsCB)
