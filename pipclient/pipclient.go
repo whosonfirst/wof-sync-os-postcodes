@@ -3,15 +3,16 @@ package pipclient
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"path/filepath"
 
-	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy"
-
-	_ "github.com/aaronland/go-sqlite-mattn"
-	hierarchyFilter "github.com/whosonfirst/go-whosonfirst-spatial-hierarchy/filter"
-	_ "github.com/whosonfirst/go-whosonfirst-spatial-sqlite"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
+
+	reader "github.com/whosonfirst/go-reader"
+	hierarchy "github.com/whosonfirst/go-whosonfirst-spatial/hierarchy"
+	spr "github.com/whosonfirst/go-whosonfirst-spr/v2"
 )
 
 type PIPClient struct {
@@ -25,32 +26,54 @@ func NewPIPClient(ctx context.Context, path string) (*PIPClient, error) {
 		return nil, err
 	}
 
-	// URI scheme is still-unfortunately convoluted. It is the pairing
-	// of the whosonfirst/go-whosonfirst-spatial/data scheme (sqlite://?dsn=)
-	// and the aaronland/go-sqlite/v2 scheme (modernc://{STUFF} or mattn://{STUFF})
-	// so we end up with sqlite://?dsn=modernc://{STUFF}. See also:
-	// https://github.com/aaronland/go-sqlite/blob/main/database/dsn.go#L11
-	// (20230106/thisisaaronland)
-
-	// url := fmt.Sprintf("sqlite://?dsn=modernc://%s", absPath)
-
-	url := fmt.Sprintf("sqlite://?dsn=mattn://%s", absPath)
-	db, err := database.NewSpatialDatabase(ctx, url)
+	db, err := database.NewRTreeSpatialDatabase(ctx, "rtree://")
 	if err != nil {
 		return nil, err
 	}
 
-	resolver, err := hierarchy.NewPointInPolygonHierarchyResolver(ctx, db, nil)
+	dir := os.DirFS(absPath)
+
+	log.Print("Indexing PIP database")
+	err = database.IndexDatabaseWithFS(ctx, db, dir)
 	if err != nil {
 		return nil, err
 	}
+	log.Print("Indexing PIP database complete")
+
+	options := &hierarchy.PointInPolygonHierarchyResolverOptions{Database: db}
+
+	resolver, err := hierarchy.NewPointInPolygonHierarchyResolver(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	readerUri := fmt.Sprintf("fs://%s", absPath)
+	r, err := reader.NewReader(ctx, readerUri)
+	if err != nil {
+		return nil, err
+	}
+
+	resolver.SetReader(r)
 
 	return &PIPClient{database: db, resolver: resolver}, nil
 }
 
 func (client *PIPClient) UpdateHierarchy(ctx context.Context, bytes []byte) ([]byte, error) {
-	inputs := &filter.SPRInputs{IsCurrent: []int64{-1, 1}, Placetypes: []string{"country", "macroregion", "continent", "empire", "region", "macrocounty", "county", "localadmin", "locality"}}
-	resultsCallback := hierarchyFilter.FirstButForgivingSPRResultsFunc
+	inputs := &filter.SPRInputs{IsCurrent: []int64{-1, 1}}
+
+	// Only allow postalcode records in the admin hierarchy to be parented by the
+	// following placetypes.
+	resultsCallback := func(ctx context.Context, r reader.Reader, body []byte, possible []spr.StandardPlacesResult) (spr.StandardPlacesResult, error) {
+		for _, item := range possible {
+			switch item.Placetype() {
+			case "locality", "localadmin", "county", "region":
+				return item, nil
+			}
+		}
+
+		return nil, nil
+	}
+
 	updateCallback := hierarchy.DefaultPointInPolygonHierarchyResolverUpdateCallback()
 
 	_, newBytes, err := client.resolver.PointInPolygonAndUpdate(ctx, inputs, resultsCallback, updateCallback, bytes)

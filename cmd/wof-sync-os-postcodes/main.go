@@ -13,6 +13,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
+	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
 	"github.com/whosonfirst/wof-sync-os-postcodes/postalregionsdb"
 	"github.com/whosonfirst/wof-sync-os-postcodes/postcodevalidator"
 	"github.com/whosonfirst/wof-sync-os-postcodes/wofdata"
@@ -71,6 +72,11 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Print("Finished building postalregions database")
+
+	pip, err := pipclient.NewPIPClient(ctx, *wofAdminDataPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	seenPostcodes := make(map[string]bool)
 	seenPostcodesMutex := sync.RWMutex{}
@@ -162,7 +168,7 @@ func main() {
 			return nil
 		}
 
-		changed, err := wof.UpdateFeature(f, postcodeData, regionDB, dryRun, ignoreRestrictiveLicence)
+		changed, err := wof.UpdateFeature(ctx, f, postcodeData, regionDB, pip, dryRun, ignoreRestrictiveLicence)
 		if changed {
 			log.Printf("Updated postcode: %s (ID %s)", postcode, id)
 			atomic.AddUint64(&updatedCounter, 1)
@@ -204,7 +210,7 @@ func main() {
 
 			log.Printf("Creating new postcode: %s", pc.Postcode)
 			atomic.AddUint64(&newCounter, 1)
-			return wof.NewFeature(pc, regionDB, dryRun)
+			return wof.NewFeature(ctx, pc, regionDB, pip, dryRun)
 		}
 
 		err = db.Iterate(onsCB)
