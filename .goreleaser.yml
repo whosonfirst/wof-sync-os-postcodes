@@ -1,9 +1,9 @@
+version: 2
 before:
   hooks:
     - go mod tidy
 builds:
-  -
-    id: wof-sync-os-postcodes
+  - id: wof-sync-os-postcodes
     binary: wof-sync-os-postcodes
     env:
       - CGO_ENABLED=0
@@ -12,14 +12,14 @@ builds:
       - darwin
     main: ./cmd/wof-sync-os-postcodes
 archives:
-  - name_template: {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Tag }}-next"
+  version_template: "{{ incpatch .Tag }}-next"
 changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
+      - "^docs:"
+      - "^test:"
