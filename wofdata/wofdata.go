@@ -3,6 +3,7 @@ package wofdata
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"log"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/sfomuseum/go-edtf"
 	"github.com/whosonfirst/wof-sync-os-postcodes/onsdb"
+	"github.com/whosonfirst/wof-sync-os-postcodes/pipclient"
 	"github.com/whosonfirst/wof-sync-os-postcodes/postalregionsdb"
 
 	"github.com/tidwall/gjson"
@@ -134,7 +136,7 @@ func (d *WOFData) CeaseFeature(json []byte, date time.Time, dryRun bool) (change
 	return d.exportFeature(json, originalJSON, dryRun)
 }
 
-func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, prDB *postalregionsdb.PostalRegionsDB, dryRun bool, ignoreRestrictiveLicence bool) (changed bool, err error) {
+func (d *WOFData) UpdateFeature(ctx context.Context, json []byte, pcData *onsdb.PostcodeData, prDB *postalregionsdb.PostalRegionsDB, pip *pipclient.PIPClient, dryRun bool, ignoreRestrictiveLicence bool) (changed bool, err error) {
 	originalJSON := make([]byte, len(json))
 	copy(originalJSON, json)
 
@@ -143,7 +145,7 @@ func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, prDB *p
 		return
 	}
 
-	json, err = setGeometry(json, pcData, prDB, ignoreRestrictiveLicence)
+	json, err = setGeometry(ctx, json, pcData, prDB, pip, ignoreRestrictiveLicence)
 	if err != nil {
 		return
 	}
@@ -157,7 +159,7 @@ func (d *WOFData) UpdateFeature(json []byte, pcData *onsdb.PostcodeData, prDB *p
 
 }
 
-func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, prDB *postalregionsdb.PostalRegionsDB, dryRun bool) error {
+func (d *WOFData) NewFeature(ctx context.Context, pc *onsdb.PostcodeData, prDB *postalregionsdb.PostalRegionsDB, pip *pipclient.PIPClient, dryRun bool) error {
 	json := []byte("{}")
 
 	json, err := sjson.SetBytes(json, "type", "Feature")
@@ -230,7 +232,7 @@ func (d *WOFData) NewFeature(pc *onsdb.PostcodeData, prDB *postalregionsdb.Posta
 	// NewFeature doesn't support `ignoreRestrictiveLicence` because new features
 	// should be minted with the restrictive licence, and then later can be
 	// overwritten to ignore this.
-	json, err = setGeometry(json, pc, prDB, false)
+	json, err = setGeometry(ctx, json, pc, prDB, pip, false)
 	if err != nil {
 		return err
 	}
@@ -321,7 +323,7 @@ func setDates(json []byte, pc *onsdb.PostcodeData) ([]byte, error) {
 	return json, nil
 }
 
-func setGeometry(json []byte, pc *onsdb.PostcodeData, prDB *postalregionsdb.PostalRegionsDB, ignoreRestrictiveLicence bool) ([]byte, error) {
+func setGeometry(ctx context.Context, json []byte, pc *onsdb.PostcodeData, prDB *postalregionsdb.PostalRegionsDB, pip *pipclient.PIPClient, ignoreRestrictiveLicence bool) ([]byte, error) {
 	latitude := pc.Latitude
 	longitude := pc.Longitude
 
@@ -365,7 +367,7 @@ func setGeometry(json []byte, pc *onsdb.PostcodeData, prDB *postalregionsdb.Post
 	}
 
 	if prDB != nil {
-		json, err = setHierarchy(json, prDB, pc)
+		json, err = setHierarchy(ctx, json, prDB, pip, pc)
 		if err != nil {
 			return json, err
 		}
@@ -489,31 +491,32 @@ func convertStringToEDTF(s string) string {
 	return t.Format(edtfDateLayout)
 }
 
-func setHierarchy(json []byte, prDB *postalregionsdb.PostalRegionsDB, pcData *onsdb.PostcodeData) ([]byte, error) {
-	regionString := getPostalRegion(pcData.Postcode)
-	region := prDB.Regions[regionString]
-
-	if region == nil {
-		log.Printf("Unable to find parent postalregion for %s, falling back to -1", pcData.Postcode)
-		json, err := sjson.SetBytes(json, "properties.wof:parent_id", -1)
-		if err != nil {
-			return nil, err
-		}
-
-		json, err = sjson.SetBytes(json, "properties.wof:hierarchy", make([]map[string]int64, 0))
-		if err != nil {
-			return nil, err
-		}
-
-		return json, nil
-	}
-
-	json, err := sjson.SetBytes(json, "properties.wof:parent_id", region.WofID)
+func setHierarchy(ctx context.Context, json []byte, prDB *postalregionsdb.PostalRegionsDB, pip *pipclient.PIPClient, pcData *onsdb.PostcodeData) ([]byte, error) {
+	json, err := pip.UpdateHierarchy(ctx, json)
 	if err != nil {
 		return nil, err
 	}
 
-	json, err = sjson.SetBytes(json, "properties.wof:hierarchy", region.Hierarchy)
+	regionString := getPostalRegion(pcData.Postcode)
+	region := prDB.Regions[regionString]
+
+	if region == nil {
+		log.Printf("Unable to find parent postalregion for %s, skipping", pcData.Postcode)
+		return json, nil
+	}
+
+	if len(region.Hierarchy) == 0 {
+		log.Printf("Parent postalregion for %s has no hierarchy, skipping", pcData.Postcode)
+		return json, nil
+	}
+
+	if len(region.Hierarchy) > 1 {
+		log.Printf("Warning: parent postalregion for %s has multiple hierarchies, using first only", pcData.Postcode)
+	}
+
+	firstRegionHierarchy := region.Hierarchy[0]
+
+	json, err = sjson.SetBytes(json, "properties.wof:hierarchy.-1", firstRegionHierarchy)
 	if err != nil {
 		return nil, err
 	}
