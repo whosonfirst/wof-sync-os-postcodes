@@ -2,7 +2,7 @@
 set -eo pipefail
 
 WORKING_DIR="/mnt/wof"
-PERSISTENT_DIR="./wof-cmd"
+PERSISTENT_DIR="$HOME/wof-cmd"
 
 # Set 2KB per inode
 sudo mkfs.ext4 -i 2048 -F /dev/nvme0n1
@@ -24,6 +24,8 @@ git clone https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb
 cd whosonfirst-data-postalcode-gb
 git config gc.auto 0
 cd ..
+
+git clone https://github.com/whosonfirst-data/whosonfirst-admin-postalcode-gb
 
 # Grab the latest release
 DOWNLOAD_URL=$(curl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-postcodes/releases/latest" | jq -r '.assets[].browser_download_url' | grep linux_x86_64)

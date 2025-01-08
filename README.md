@@ -1,6 +1,6 @@
 # wof-sync-os-postcodes
 
-This utility syncs the [Who’s on First](https://www.whosonfirst.org) UK postcode data against the Office of National Statistics' (ONS) [Postcode Directory](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-modified&tags=PRD_ONSPD). It deprecates invalid postcodes, ceases ones that no longer exist, updates ones that have moved, and creates new ones if necessary.
+This utility syncs the [Who’s on First](https://www.whosonfirst.org) UK postcode data against the Office of National Statistics' (ONS) [Postcode Directory](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=Date%20Created%7Ccreated%7Cdesc&tags=PRD_ONSPD). It deprecates invalid postcodes, ceases ones that no longer exist, updates ones that have moved, and creates new ones if necessary.
 
 It should be rerun whenever there's a new release of the Postcode Directory, which is usually quarterly.
 
@@ -12,29 +12,29 @@ By default it will ignore the coordinates from Northern Irish postcodes (startin
 
 ## Requirements
 
-- Golang 1.21
+- Golang 1.23
 
-## Example
+## Example usage
 
-First you need a spatial sqlite database containing GB admin. Get `whosonfirst-data-admin-gb`, and the [`wof-sqlite-features-index` binary](https://github.com/whosonfirst/go-whosonfirst-sqlite-features-index) and then run:
+To perform a sync you'll need the following dependencies in place:
+
+- [`whosonfirst-data-admin-gb`](https://github.com/whosonfirst-data/whosonfirst-data-admin-gb/)
+- [`whosonfirst-data-postalcode-gb`](https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb/)
+- A copy of the ONS postcode directory CSV file (the URL for this changes on every release, but you can find it from the [ONS Open Geography Portal](https://geoportal.statistics.gov.uk))
+
+Either download this repo and build the binary with `make`, or download the CLI tool binary directory from releases.
+
+Then you can run the following to perform the sync.
 
 ```shell
-./wof-sqlite-index-features -database-uri modernc://$(pwd)/whosonfirst-data-admin-gb.sqlite -spatial-tables -timings $(pwd)/whosonfirst-data-admin-gb
+wof-sync-os-postcodes -wof-postalcodes-path whosonfirst-data-postalcode-gb/data -ons-csv-path ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01 -wof-admin-data-path whosonfirst-data-admin-gb/data
 ```
 
-This will output a spatial sqlite DB containing the GB admin data into `whosonfirst-data-admin-gb.sqlite`. Expect this to take a couple of minutes to build and be about 2GB.
-
-Build the binary with a simple `make`. Then:
-
-```shell
-./bin/wof-sync-os-postcodes -wof-postalcodes-path ../whosonfirst-data-postalcode-gb/data -ons-csv-path ../ons/ONSPD_MAY_2019_UK/Data/ONSPD_MAY_2019_UK.csv -ons-date 2019-05-01 -wof-admin-sqlite-path ../whosonfirst-data-admin-gb.sqlite
-```
-
-## Performing the sync
+## Performing the full sync
 
 The `whosonfirst-data-postalcode-gb` repo has a large number of small files, and performing the actual sync and subsequent git operations against the repo is fairly painful.
 
-I suggest using a 32GB machine with an NVME SSD disk. The NVME SSD provides tolerable IO performance, and brings time to perform a fresh sync down to few hours.
+I suggest using a 32GB machine with a local NVME SSD disk. The NVME SSD provides tolerable IO performance, and brings time to perform a fresh sync down to few hours.
 
 `setup.sh` contains a script which performs much of the set up for you. It expects to be run in an empty, ephemeral VM on Google Cloud Compute, so if you're running on a machine you care about, please read the script carefully before executing.
 
@@ -47,11 +47,10 @@ chmod +x setup.sh
 Perform the sync with something like:
 
 ```shell
-/mnt/wof
-./wof-sync-os-postcodes -wof-postalcodes-path whosonfirst-data-postalcode-gb/data/ -ons-csv-path ONSPD_AUG_2021_UK.csv -ons-date 2021-08-01 -wof-admin-sqlite-path whosonfirst-data-admin-gb.sqlite
+./wof-sync-os-postcodes -wof-postalcodes-path /mnt/data/whosonfirst-data-postalcode-gb/data/ -ons-csv-path ONSPD_AUG_2021_UK.csv -ons-date 2021-08-01 -wof-admin-data-path /mnt/data/whosonfirst-data-admin-gb/data/
 ```
 
-Now find something else to do for a few hours. 
+Now find something else to do for a few hours.
 
 Assuming you're on an ephemeral VM, you will need to set your Git name and email before you commit your changes:
 
@@ -62,12 +61,11 @@ git config --global user.email "foo@bar.com"
 
 Some tips:
 
-* Perform the `git push` over HTTPS, as SSH connections to Github seem to drop while the repo is being prepared for push
-* Disable Git garbage collection on the repo as this will probably kick in at some point and you will scream (`setup.sh` does this for you)
+- Perform the `git push` over HTTPS, as SSH connections to Github seem to drop while the repo is being prepared for push
+- Disable Git garbage collection on the repo as this will probably kick in at some point and you will scream (`setup.sh` does this for you)
 
 ## See also
 
 - https://github.com/whosonfirst-data/whosonfirst-data-postalcode-gb
 - https://github.com/whosonfirst-data/whosonfirst-data-admin-gb
-- https://github.com/whosonfirst/go-whosonfirst-spatial-hierarchy
 - http://geoportal.statistics.gov.uk
