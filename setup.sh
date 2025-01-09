@@ -25,6 +25,8 @@ cd whosonfirst-data-postalcode-gb
 git config gc.auto 0
 cd ..
 
+git clone https://github.com/whosonfirst-data/whosonfirst-data-admin-gb
+
 # Grab the latest release
 DOWNLOAD_URL=$(curl -sL "https://api.github.com/repos/whosonfirst/wof-sync-os-postcodes/releases/latest" | jq -r '.assets[].browser_download_url' | grep linux_x86_64)
 curl -sL "${DOWNLOAD_URL}" -o "$PERSISTENT_DIR/wof-sync-os-postcodes"
