@@ -18,11 +18,11 @@ type PostcodeData struct {
 	Longitude         string `csv:"long"`
 	Inception         string `csv:"dointr"`
 	Cessation         string `csv:"doterm"`
-	CountryCode       string `csv:"ctry"`
-	RegionCode        string `csv:"rgn"`
-	CountyCode        string `csv:"oscty"`
-	DistrictCode      string `csv:"oslaua"`
-	PositionalQuality string `csv:"osgrdind"`
+	CountryCode       string `csv:"ctry25cd"`
+	RegionCode        string `csv:"rgn25cd"`
+	CountyCode        string `csv:"cty25cd"`
+	DistrictCode      string `csv:"lad25cd"`
+	PositionalQuality string `csv:"gridind"`
 }
 
 // ONSDB is a wrapper around an SQLite database containing the ONS Poscode Directory
